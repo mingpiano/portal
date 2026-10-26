@@ -19,6 +19,8 @@ function actions_() {
 
     'bootstrap':    { fn: function () { return {}; }, roles: ALL_ROLES, state: true },
     'profile.save': { fn: hProfileSave_, write: true, state: true, roles: ALL_ROLES },
+    'homework.check': { fn: hHomeworkCheck_, write: true, state: true, roles: ['parent', 'student'] },
+    'preview.state':  { fn: hPreviewState_, roles: ['admin'] },
 
     'notices.read':  { fn: hNoticeRead_, write: true, state: true, roles: ['parent', 'student'] },
     'messages.send': { fn: hMessageSend_, write: true, state: true, roles: ALL_ROLES },
@@ -68,8 +70,40 @@ function errorResponse_(err) {
   return { ok: false, error: 'server' };
 }
 
-/** 处理一个请求，返回 {ok:true,data} 。测试里也直接调用它。 */
+/**
+ * 处理一个请求，返回 {ok:true,data} 。测试里也直接调用它。
+ * 代码升级（SCHEMA_VERSION 变大）后，表格如果还缺新列或新表，自动补齐一次再重试（已有数据不动），
+ * 这样推送新版本后不用记得手动运行 upgradeSchema。
+ * 版本号没变却缺列，说明是有人手动改坏了表头：不自动补，照常报错，免得悄悄读出一列空数据。
+ */
 function handle_(req) {
+  try {
+    return handleOnce_(req);
+  } catch (err) {
+    if (!(err && err.apiCode === 'schema_mismatch') || !schemaOutdated_()) throw err;
+    migrateSchema_();
+    return handleOnce_(req);
+  }
+}
+
+function schemaOutdated_() {
+  try {
+    resetRequest_();
+    return Number(getConfigMap_().schema_version || 0) < SCHEMA_VERSION;
+  } catch (e) { return false; }
+}
+
+function migrateSchema_() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) fail_('busy');
+  try {
+    resetRequest_();
+    ensureSchema_(ss_());
+    setConfig_('schema_version', SCHEMA_VERSION);
+  } finally { lock.releaseLock(); }
+}
+
+function handleOnce_(req) {
   if (!req || typeof req !== 'object' || Array.isArray(req)) fail_('bad_request');
   var table = actions_(), name = String(req.a);
   // 只认自己登记的操作名；'constructor'、'__proto__' 这类原型链上的名字一律当作未知

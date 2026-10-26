@@ -11,6 +11,7 @@ const GATES = {
   'auth.logout': ['admin', 'parent', 'student'],
   'bootstrap': ['admin', 'parent', 'student'],
   'profile.save': ['admin', 'parent', 'student'],
+  'homework.check': ['parent', 'student'], 'preview.state': ['admin'],
   'notices.read': ['parent', 'student'],
   'messages.send': ['admin', 'parent', 'student'],
   'messages.read': ['admin', 'parent', 'student'],

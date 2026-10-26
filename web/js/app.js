@@ -2,6 +2,7 @@ import * as api from './api.js';
 import { CONFIGURED } from './config.js';
 import { t, tx, getLang, setLang } from './i18n.js';
 import * as V from './views.js';
+import { fieldsToMs, wallFields, nowFields } from './util.js';
 
 /* ---------- 本机存储（只放“个人偏好”和登录令牌；读写都包 try，隐私模式下也能用） ---------- */
 const KEY = { token: 'ms.token', lang: 'ms.lang' };
@@ -15,6 +16,7 @@ const S = {
   screen: 'boot',              // boot | offline | login | app
   token: null, data: null, tab: null, kid: null, msgSel: null, recSid: null,
   showArchived: false, modal: null, avDraft: null, busy: false, lastSync: 0,
+  preview: null, adminData: null, adminLang: null, crop: null,
   fresh: { n: new Set(), m: new Set() }, readTried: new Set(),
   login: { step: 'email', email: '', ticket: null, accounts: [], err: '', busy: false, remember: true, cooldown: 0 }
 };
@@ -81,6 +83,7 @@ export function render({ keep = true } = {}) {
   restore(snap);
   window.scrollTo(0, sy);
   const th = $('#thread'); if (th) th.scrollTop = th.scrollHeight;
+  drawCrop(); updateHints();
   autoRead();
 }
 
@@ -97,6 +100,7 @@ function setData(state) { S.data = state; S.lastSync = Date.now(); if (S.kid && 
 const STALE_CODES = ['stale', 'already_confirmed', 'not_found', 'forbidden', 'duplicate'];
 /** 发一个需要登录的请求。成功时用返回的最新数据整体替换界面。 */
 async function run(action, params, opt = {}) {
+  if (S.preview) { if (!opt.quiet) toast(tx('prev.readonly')); return { ok: false, error: 'preview' }; }
   if (S.busy) return { ok: false, error: 'busy_local' };
   S.busy = true; if (!opt.silent) render();
   const r = await api.call(action, params, S.token);
@@ -113,7 +117,7 @@ async function run(action, params, opt = {}) {
   return r;
 }
 async function refresh(force) {
-  if (S.screen !== 'app' || S.busy) return;
+  if (S.screen !== 'app' || S.busy || S.preview) return;
   if (!force && (Date.now() - S.lastSync < 120000 || S.modal)) return;
   const r = await api.call('bootstrap', {}, S.token);
   if (r.ok) { setData(r.data.state); render(); } else if (r.error === 'unauthorized') sessionEnded('login.expired');
@@ -121,7 +125,7 @@ async function refresh(force) {
 
 /** 打开留言页 / 通知页时，把看到的未读标成已读（“新”标记保留到离开这一页）。 */
 function autoRead() {
-  if (S.screen !== 'app' || S.busy) return;
+  if (S.screen !== 'app' || S.busy || S.preview) return;
   const d = S.data;
   if (S.tab === 'notices' && d.me.role !== 'admin') {
     const ids = d.notices.filter(n => n.unread && !S.readTried.has('n' + n.id)).map(n => n.id);
@@ -136,7 +140,7 @@ function autoRead() {
 /* ---------- 登录 / 退出 ---------- */
 function sessionEnded(msgKey) {
   store.set(KEY.token, null); store.set(KEY.token, null, true);
-  Object.assign(S, { token: null, data: null, modal: null, screen: 'login', tab: null, kid: null });
+  Object.assign(S, { preview: null, adminData: null, crop: null, token: null, data: null, modal: null, screen: 'login', tab: null, kid: null });
   Object.assign(S.login, { step: 'email', err: msgKey || '', busy: false, ticket: null, accounts: [] });
   render({ keep: false });
 }
@@ -170,6 +174,77 @@ export function parseBooks(text) {
 }
 const num = v => (v === '' || v == null ? '' : Number(v));
 
+/* ---------- 头像：选图 → 拖动/缩放裁剪 → 144px JPEG ---------- */
+const CROP = 240, AV_OUT = 144, AV_MAX_BYTES = 15 * 1024 * 1024;
+function cropGeom() {
+  const c = S.crop, base = CROP / Math.min(c.img.width, c.img.height), sc = base * c.zoom;
+  const w = c.img.width * sc, h = c.img.height * sc;
+  c.ox = Math.min(0, Math.max(CROP - w, c.ox)); c.oy = Math.min(0, Math.max(CROP - h, c.oy));
+  return { sc, w, h };
+}
+function paintCrop(cv, size) {
+  const c = S.crop, g = cropGeom(), k = size / CROP, ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, size, size); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+  ctx.drawImage(c.img, c.ox * k, c.oy * k, g.w * k, g.h * k);
+}
+function drawCrop() { const cv = $('#crop-cv'); if (cv && S.crop) paintCrop(cv, CROP); }
+function startCrop(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type)) return toast(tx('av.notImage'));
+  if (file.size > AV_MAX_BYTES) return toast(tx('av.tooBig'));
+  const rd = new FileReader();
+  rd.onerror = () => toast(tx('av.notImage'));
+  rd.onload = () => {
+    const img = new Image(); // 用 data: 地址读图（页面的安全策略不允许 blob:）
+    img.onload = () => {
+      const base = CROP / Math.min(img.width, img.height);
+      S.crop = { img, zoom: 1, ox: (CROP - img.width * base) / 2, oy: (CROP - img.height * base) / 2 };
+      render({ keep: false });
+    };
+    img.onerror = () => toast(tx('av.notImage'));
+    img.src = rd.result;
+  };
+  rd.readAsDataURL(file);
+}
+function exportCrop() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = AV_OUT; paintCrop(cv, AV_OUT);
+  for (const q of [0.82, 0.7, 0.55, 0.4]) { const v = cv.toDataURL('image/jpeg', q); if (v.length <= 16000) return v; }
+  return null;
+}
+let drag = null;
+document.addEventListener('pointerdown', e => {
+  const cv = e.target.closest && e.target.closest('[data-drag="crop"]'); if (!cv || !S.crop) return;
+  drag = { x: e.clientX, y: e.clientY, ox: S.crop.ox, oy: S.crop.oy, k: CROP / cv.getBoundingClientRect().width };
+  try { cv.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
+  e.preventDefault();
+});
+document.addEventListener('pointermove', e => {
+  if (!drag || !S.crop) return;
+  S.crop.ox = drag.ox + (e.clientX - drag.x) * drag.k; S.crop.oy = drag.oy + (e.clientY - drag.y) * drag.k; drawCrop();
+});
+const endDrag = () => { drag = null; };
+document.addEventListener('pointerup', endDrag); document.addEventListener('pointercancel', endDrag);
+
+/* ---------- 记课表单：学生那边是几点（只用 textContent 更新） ---------- */
+function recMs(prefix) {
+  const v = id => { const el = $('#rec-' + id); return el ? el.value : ''; };
+  const dateEl = $(prefix === 't' ? '#rec-date' : '#rec-ndate');
+  if (!dateEl) return null;
+  return fieldsToMs(dateEl.value, +v(prefix + 'h'), +v(prefix + 'm'), v(prefix + 'ap'), S.data.teacherTz);
+}
+function updateHints() {
+  if (S.screen !== 'app' || S.tab !== 'record' || !$('#rec-hint')) return;
+  const sid = ($('#rec-student') || {}).value;
+  const ms = recMs('t'), nms = $('#rec-ndate').value ? recMs('n') : null;
+  $('#rec-hint').textContent = ms == null ? tx('err.bad_time') : V.tzHint(S, sid, ms);
+  $('#rec-nhint').textContent = !$('#rec-ndate').value ? '' : nms == null ? tx('err.bad_time') : V.tzHint(S, sid, nms);
+}
+function setNext(ms) {
+  const f = wallFields(ms, S.data.teacherTz);
+  $('#rec-ndate').value = f.date; $('#rec-nh').value = String(f.h12); $('#rec-nm').value = String(f.mi); $('#rec-nap').value = f.ap;
+  if (![...$('#rec-nm').options].some(o => +o.value === f.mi)) { const o = new Option(String(f.mi).padStart(2, '0'), String(f.mi)); $('#rec-nm').add(o); $('#rec-nm').value = String(f.mi); }
+}
+
 const FORMS = {
   async 'login-email'(f, fd) {
     const email = norm(fd.get('email')); const A = S.login;
@@ -194,15 +269,23 @@ const FORMS = {
   async 'rec-save'(f, fd) {
     const pieces = parsePieces(fd.get('pieces'));
     if (!pieces.length || pieces.some(p => !p.title)) return toast(tx('err.rec_pieces'));
-    const when = new Date(fd.get('date'));
-    if (isNaN(when)) return toast(tx('err.bad_request'));
+    const tz = S.data.teacherTz;
+    const ms = fieldsToMs(fd.get('date'), +fd.get('th'), +fd.get('tm'), fd.get('tap'), tz);
+    if (ms == null) return toast(tx('err.bad_time'));
+    let next = '';
+    if (fd.get('ndate')) {
+      const nms = fieldsToMs(fd.get('ndate'), +fd.get('nh'), +fd.get('nm'), fd.get('nap'), tz);
+      if (nms == null) return toast(tx('err.bad_time'));
+      if (nms <= ms) return toast(tx('err.next_before'));
+      next = new Date(nms).toISOString();
+    }
     const sid = fd.get('sid'); S.recSid = sid;
-    const r = await run('lessons.log', { sid, date: when.toISOString(), dur: num(fd.get('dur')), pieces, focus: fd.get('focus'), tempo: fd.get('tempo'), homework: fd.get('homework'), due: fd.get('due') || '' }, { fresh: true });
+    const r = await run('lessons.log', { sid, date: new Date(ms).toISOString(), dur: num(fd.get('dur')), pieces, focus: fd.get('focus'), tempo: fd.get('tempo'), homework: fd.get('homework'), due: fd.get('due') || '', next }, { fresh: true });
     if (r.ok) toast(tx('rec.saved'));
   },
   async 'student-save'(f, fd) {
     const student = { name: fd.get('name'), email: fd.get('email'), kind: fd.get('kind'), lang: fd.get('lang'), birth: fd.get('birth') || '', start: fd.get('start') || '',
-      level: fd.get('level'), grp: fd.get('grp'), dur: num(fd.get('dur')), paid: num(fd.get('paid')), carry: num(fd.get('carry')), adj: num(fd.get('adj')), showPoints: !!fd.get('showPoints') };
+      tz: fd.get('tz') || undefined, level: fd.get('level'), grp: fd.get('grp'), dur: num(fd.get('dur')), paid: num(fd.get('paid')), carry: num(fd.get('carry')), adj: num(fd.get('adj')), showPoints: !!fd.get('showPoints') };
     if (f.dataset.id) student.id = f.dataset.id;
     const r = await run('students.save', { student }, { fresh: true });
     if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); }
@@ -251,7 +334,7 @@ const ACT = {
   'goto-msg'(d) { go({ tab: 'messages', msgSel: d.id }, { scroll: true }); },
   'sel-msg'(d) { go({ msgSel: d.id }); },
   'toggle-archived'() { S.showArchived = !S.showArchived; render(); },
-  close() { S.modal = null; S.avDraft = null; render({ keep: false }); },
+  close() { S.modal = null; S.avDraft = null; S.crop = null; render({ keep: false }); },
   'close-bg'(d, el, e) { if (e.target === el) ACT.close(); },
   'student-new'() { S.modal = { type: 'student', id: null }; render({ keep: false }); focusFirst('#modal-root'); },
   'student-edit'(d) { S.modal = { type: 'student', id: d.id }; render({ keep: false }); focusFirst('#modal-root'); },
@@ -279,11 +362,38 @@ const ACT = {
   'confirm-yes'() { if (S.modal && S.modal.run) S.modal.run(); },
   async sign(d) { const r = await run('lessons.sign', { id: d.id }); if (r.ok) toast(tx('les.signedOk')); },
   async claim(d) { const r = await run('tuition.claim', { sid: d.id }); if (r.ok) toast(tx('tu.claimedOk')); },
-  'av-open'() { S.avDraft = null; S.modal = { type: 'avatar' }; render({ keep: false }); },
+  'av-open'() { S.avDraft = null; S.crop = null; S.modal = { type: 'avatar' }; render({ keep: false }); },
   'av-pick'(d) { const a = S.data.me.avatar; S.avDraft = { ...(S.avDraft || (a && a.t === 'emoji' ? { v: a.v, c: a.c } : { v: null, c: '#F6D7B0' })), v: d.v }; render(); },
   'av-col'(d) { const a = S.data.me.avatar; S.avDraft = { ...(S.avDraft || (a && a.t === 'emoji' ? { v: a.v, c: a.c } : { v: null, c: '#F6D7B0' })), c: d.c }; render(); },
   async 'av-save'() { const a = S.avDraft; if (!a || !a.v) return; const r = await run('profile.save', { avatar: { t: 'emoji', v: a.v, c: a.c } }, { fresh: true }); if (r.ok) { S.modal = null; S.avDraft = null; render({ keep: false }); } },
   async 'av-clear'() { const r = await run('profile.save', { avatar: null }, { fresh: true }); if (r.ok) { S.modal = null; S.avDraft = null; render({ keep: false }); } },
+  async preview(d) {
+    if (S.busy || S.preview) return;
+    S.busy = true; render();
+    const r = await api.call('preview.state', { sid: d.id }, S.token);
+    S.busy = false;
+    if (!r.ok) { if (r.error === 'unauthorized') return sessionEnded('login.expired'); toast(errText(r.error)); return render(); }
+    S.adminData = S.data; S.adminLang = getLang();
+    S.preview = { id: d.id }; S.data = r.data.preview; S.modal = null; S.kid = null; S.msgSel = null;
+    const l = S.data.me.lang; if (l === 'zh' || l === 'en') setLang(l);
+    S.tab = V.defaultTab(S); render({ keep: false }); window.scrollTo(0, 0);
+  },
+  'preview-exit'() {
+    if (!S.preview) return;
+    S.data = S.adminData; S.adminData = null; S.preview = null; setLang(S.adminLang || getLang());
+    S.tab = 'students'; S.modal = null; S.kid = null; render({ keep: false }); window.scrollTo(0, 0);
+  },
+  'rec-next7'() {
+    const ms = recMs('t'); if (ms == null) return toast(tx('err.bad_time'));
+    const dt = new Date(ms + 7 * 86400000); setNext(dt.getTime()); updateHints();
+  },
+  'rec-next-clear'() { $('#rec-ndate').value = ''; updateHints(); },
+  async 'crop-save'() {
+    if (!S.crop) return;
+    const v = exportCrop(); if (!v) return toast(tx('av.tooBig'));
+    const r = await run('profile.save', { avatar: { t: 'img', v } }, { fresh: true });
+    if (r.ok) { S.crop = null; S.modal = null; render({ keep: false }); }
+  },
   async logout() { const tk = S.token; sessionEnded(''); api.call('auth.logout', {}, tk); },
   /* 登录 */
   'login-back'() { Object.assign(S.login, { step: 'email', err: '', ticket: null, accounts: [] }); render({ keep: false }); focusFirst('#app'); },
@@ -309,10 +419,18 @@ const CHANGE = {
     const r = await run('pairs.set', { pid: el.dataset.pid, sid: el.dataset.sid, on: el.checked }, { silent: true });
     if (!r.ok) render({ keep: false }); // 失败时把勾选恢复成服务器上的真实状态
   },
+  'av-file'(el) { const f = el.files && el.files[0]; el.value = ''; startCrop(f); },
+  async 'me-tz'(el) { const r = await run('profile.save', { tz: el.value }, { fresh: true }); if (r.ok) toast(tx('common.saved')); },
+  async hw(el) {
+    const on = el.checked;
+    const r = await run('homework.check', { id: el.dataset.id, idx: Number(el.dataset.idx), on }, { silent: true });
+    if (!r.ok) render({ keep: false });
+  },
   'rec-student'(el) {
     S.recSid = el.value;
     const s = stuById(el.value), dur = $('#rec-dur');
     if (s && dur) dur.value = s.dur;
+    updateHints();
   }
 };
 
@@ -327,8 +445,10 @@ document.addEventListener('submit', e => {
   e.preventDefault();
   const fn = FORMS[f.dataset.form]; if (fn) fn(f, new FormData(f));
 });
-document.addEventListener('change', e => { const el = e.target.closest('[data-change]'); if (el && CHANGE[el.dataset.change]) CHANGE[el.dataset.change](el); });
+document.addEventListener('change', e => { if (e.target.classList && e.target.classList.contains('rec-tf')) updateHints(); const el = e.target.closest('[data-change]'); if (el && CHANGE[el.dataset.change]) CHANGE[el.dataset.change](el); });
 document.addEventListener('input', e => {
+  if (e.target.id === 'crop-zoom' && S.crop) { S.crop.zoom = Number(e.target.value); drawCrop(); return; }
+  if (e.target.classList && e.target.classList.contains('rec-tf')) { updateHints(); return; }
   if (e.target.id === 'login-code') {
     const v = e.target.value.replace(/\D/g, '').slice(0, 6); if (v !== e.target.value) e.target.value = v;
     if (v.length === 6 && !S.login.busy) e.target.form.requestSubmit(); // 输满 6 位自动提交

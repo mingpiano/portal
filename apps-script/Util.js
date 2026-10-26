@@ -96,3 +96,19 @@ function baseEmail_(email) {
   if (dom === 'gmail.com' || dom === 'googlemail.com') { local = local.replace(/\./g, ''); dom = 'gmail.com'; }
   return local + '@' + dom;
 }
+
+/* ---------- 时区 ---------- */
+
+function isTz_(v) { return TZ_LIST.indexOf(v) >= 0; }
+/** 老师所在时区（设置里没有或不合法就用默认值）。 */
+function teacherTz_() {
+  var v = getConfigMap_().teacher_tz;
+  return isTz_(v) ? v : DEFAULT_TZ;
+}
+/** 学生所在时区；没填就当作和老师同一个时区。 */
+function studentTz_(s) { return s && isTz_(s.tz) ? s.tz : teacherTz_(); }
+/** 把某个时刻按指定时区写成“2026-10-28 3:00 PM”（12 小时制）。 */
+function fmtTz_(ms, tz) {
+  var d = new Date(ms);
+  return Utilities.formatDate(d, tz, 'yyyy-MM-dd') + ' ' + Utilities.formatDate(d, tz, 'h:mm a');
+}

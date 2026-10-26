@@ -94,3 +94,20 @@ function learning_(lessons) {
     finished: all.filter(function (e) { return e.st === 'done'; }).sort(byLast)
   };
 }
+
+/** 作业拆成逐项：每行一项，空行忽略。学生按项勾选，勾选记录按“第几项”保存。 */
+function hwItems_(text) {
+  return String(text || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+}
+
+/**
+ * 下次上课时间：取最近一节课里老师填的“下次上课”，已经过去就不算。
+ * 老师是在记课时填的，所以以最新一节课为准。
+ */
+function nextLesson_(lessons, nowMs) {
+  var done = lessons.filter(function (l) { return l.status === 'done'; })
+    .sort(function (a, b) { return ms_(b.date) - ms_(a.date); });
+  var latest = done[0];
+  var n = latest && latest.notes && latest.notes.next ? ms_(latest.notes.next) : 0;
+  return n > nowMs ? iso_(n) : '';
+}

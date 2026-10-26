@@ -33,7 +33,7 @@ function sendMail_(to, mail, kind, logSubject) {
   if (isTestEnv_() && !allowedInTest_(to)) { logMail_(to, subj, kind, 'blocked_test_env'); return false; }
   if (MailApp.getRemainingDailyQuota() < MAIL_QUOTA_FLOOR) { logMail_(to, subj, kind, 'quota_low'); return false; }
   try {
-    MailApp.sendEmail({ to: to, subject: mail.subject, body: mail.text, htmlBody: mail.html, name: mail.from || 'Piano Studio' });
+    MailApp.sendEmail({ to: to, subject: mail.subject, body: mail.text, htmlBody: mail.html, name: mail.from || STUDIO_NAME });
     logMail_(to, subj, kind, 'sent');
     return true;
   } catch (e) {
@@ -68,13 +68,17 @@ function mailCode_(code, lang) {
   };
 }
 
-function mailLessonSign_(studentName, dateText, lang) {
+function mailLessonSign_(studentName, dateText, lang, nextText) {
   var zh = lang !== 'en';
   var studio = studioName_(lang), link = linkLine_(lang);
   var subject = zh ? studio + '：请确认 ' + studentName + ' 的课后记录' : studio + ': please sign off on ' + studentName + "'s lesson notes";
   var body = zh ? '老师记好了 ' + studentName + '（' + dateText + '）这节课的学习记录。登录网站点“确认签字”即可。48 小时内没有签字会自动确认，但不加积分。'
                 : 'Your teacher has logged the lesson for ' + studentName + ' (' + dateText + '). Sign in and tap "Sign" to confirm. If nobody signs within 48 hours it is confirmed automatically, without points.';
-  return { subject: subject, from: studio, text: body + link.text, html: wrapHtml_('<p>' + escHtml_(body) + '</p>' + link.html) };
+  var next = '';
+  if (nextText) next = zh ? '下次上课：' + nextText + '（按学生所在时区）。请在上课前练琴，并完成作业。'
+                          : 'Next lesson: ' + nextText + ' (in the student\'s time zone). Please practice and finish the homework before then.';
+  return { subject: subject, from: studio, text: body + (next ? '\n\n' + next : '') + link.text,
+    html: wrapHtml_('<p>' + escHtml_(body) + '</p>' + (next ? '<p><b>' + escHtml_(next) + '</b></p>' : '') + link.html) };
 }
 
 function mailTuition_(studentName, note, lang) {

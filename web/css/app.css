@@ -356,3 +356,39 @@ main .stack>p.small,main .stack>p.muted{background:color-mix(in srgb,var(--surfa
 @media (max-width:420px){.lesson{grid-template-columns:64px minmax(0,1fr);gap:10px}}
 .piece .work,.prow .work{overflow-wrap:anywhere}
 @media (max-width:480px){.pill{white-space:normal}}
+
+/* ---- 第 2 版：logo、预览、时间选择、作业清单、头像裁剪 ---- */
+.brand .logo{width:34px;height:auto;flex:none}
+.login-brand{display:flex;align-items:center;gap:12px;min-width:0}
+.login-brand h1{margin:0}
+.login-logo{width:56px;height:auto;flex:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo{filter:invert(1)}}
+:root[data-theme="dark"] .logo{filter:invert(1)}
+
+.prev-note{background:var(--accent-soft);border-bottom:1px solid var(--accent);color:var(--ink);font-size:.88rem;position:sticky;top:0;z-index:12}
+.prev-note .wrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-block:8px}
+.bar{top:var(--prev-h,0px)}
+
+.tp-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tp-row input[type=date]{width:auto;flex:1 1 150px}
+.tp{display:flex;gap:4px;align-items:center}
+.tp select{width:auto}
+.hint{color:var(--ink-2);margin:2px 0 0;min-height:1.2em}
+
+.next-when{font-size:1.25rem;font-weight:700;font-family:var(--f-display);margin:4px 0}
+.next-line{display:flex;flex-direction:column;gap:4px}
+.hwlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.hwlist li.done{color:var(--ink-2);text-decoration:line-through}
+.hwchecks{display:flex;flex-direction:column;gap:8px;margin-block:6px}
+.hwitem{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);cursor:pointer}
+.hwitem input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:var(--accent)}
+.hwitem.done span{color:var(--ink-2);text-decoration:line-through}
+.ok-text{color:var(--pos);font-weight:600}
+
+.file-btn{cursor:pointer}
+.file-btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.crop-wrap{display:flex;justify-content:center;padding:6px 0}
+.crop-cv{border-radius:50%;border:2px dashed var(--accent);touch-action:none;cursor:grab;background:var(--surface-2);max-width:100%;height:auto}
+.crop-cv:active{cursor:grabbing}
+.crop-zoom input{width:100%}
+.tz-box{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}

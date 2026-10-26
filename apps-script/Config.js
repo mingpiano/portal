@@ -7,7 +7,7 @@
  */
 
 var API_VERSION = 1;
-var SCHEMA_VERSION = 1;
+var SCHEMA_VERSION = 2;
 
 /* ---------- 登录相关限制 ---------- */
 var CODE_TTL_MS = 10 * 60 * 1000;          // 验证码 10 分钟有效
@@ -26,7 +26,7 @@ var MSG_MAIL_THROTTLE_MS = 60 * 60 * 1000; // 同一个学生的留言，一小�
 
 /* ---------- 文字长度上限 ---------- */
 var LIMITS = { name: 80, email: 120, level: 80, grp: 40, title: 200, body: 4000, text: 2000,
-  piece: 120, focus: 500, tempo: 40, homework: 500, note: 1000, book: 80 };
+  piece: 120, focus: 500, tempo: 40, homework: 800, note: 1000, book: 80, hwItems: 20, avatarImg: 16000 };
 
 /**
  * 表结构。每一项是 '列名' 或 '列名:类型'。
@@ -38,10 +38,10 @@ var SHEETS_ = {
   Config:   ['key', 'value'],
   Admins:   ['email', 'name', 'avatar:j', 'active:b'],
   Students: ['id', 'name', 'email', 'kind', 'birth:d', 'start:d', 'adj:i', 'lang', 'level', 'grp', 'dur:i',
-             'paid:i', 'carry:i', 'claimed:b', 'showPoints:b', 'avatar:j', 'books:j', 'active:b', 'created'],
+             'paid:i', 'carry:i', 'claimed:b', 'showPoints:b', 'avatar:j', 'books:j', 'active:b', 'created', 'tz'],
   Parents:  ['id', 'name', 'email', 'lang', 'avatar:j', 'active:b', 'created'],
   Pairs:    ['parentId', 'studentId'],
-  Lessons:  ['id', 'sid', 'date', 'dur:i', 'status', 'confirmedAt', 'signedAt', 'signedBy', 'loggedAt', 'notes:j'],
+  Lessons:  ['id', 'sid', 'date', 'dur:i', 'status', 'confirmedAt', 'signedAt', 'signedBy', 'loggedAt', 'notes:j', 'hwDone:j'],
   Notices:  ['id', 'ts', 'scope', 'sid', 'aud', 'title', 'body', 'readBy:j'],
   Messages: ['id', 'sid', 'from', 'pid', 'ts', 'text', 'readBy:j'],
   Sessions: ['hash', 'kind', 'email', 'role', 'subject', 'created', 'expires', 'data:j'],
@@ -53,9 +53,19 @@ var DEFAULT_RULES = { confirm: 2, sign: 1, ontime: 3, late: -1, missing: -3, nos
 var RULE_RANGE = { confirm: [-100, 100], sign: [-100, 100], ontime: [-100, 100], late: [-100, 100], missing: [-100, 100],
   noshow: [-100, 100], streakN: [0, 20], streakBonus: [-100, 100], grace: [0, 30] };
 
+var STUDIO_NAME = 'Ming’s Piano Studio';  // 中文和英文界面都显示这个名字
+var DEFAULT_TZ = 'America/Denver';        // 老师所在时区的默认值（老师可以在“我的资料”里改）
+
+/** 可选时区。网页里的下拉框用同一份（有测试守着）。只接受这里的 ID，不接受任意字符串。 */
+var TZ_LIST = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles',
+  'America/Anchorage', 'Pacific/Honolulu', 'America/Toronto', 'America/Vancouver', 'America/Mexico_City',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei',
+  'Asia/Tokyo', 'Asia/Seoul', 'Asia/Singapore', 'Australia/Sydney', 'Pacific/Auckland'];
+
 var DEFAULT_CONFIG = {
-  studio_name_zh: '琴房',
-  studio_name_en: 'Piano Studio',
+  studio_name_zh: STUDIO_NAME,
+  studio_name_en: STUDIO_NAME,
+  teacher_tz: DEFAULT_TZ,
   'mail.lessonSign': 'true',      // 记课后给学生（或家长）发一封请签字的邮件
   'mail.teacherOnMessage': 'true', // 学生或家长留言时给老师发邮件提醒
   teacher_lang: 'zh'              // 给老师发的邮件用什么语言

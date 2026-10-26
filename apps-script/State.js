@@ -52,7 +52,8 @@ function buildState_(ctx) {
       level: s.level, grp: s.grp, dur: s.dur, showPoints: s.showPoints, avatar: s.avatar, books: s.books || [],
       active: s.active, claimed: s.claimed, hasParent: kidParents.length > 0,
       done: doneList.length, total: doneList.length + s.adj, hours: Math.round(mins / 6) / 10,
-      tuition: tuition_(s, doneList.length), learning: learning_(ls)
+      tuition: tuition_(s, doneList.length), learning: learning_(ls),
+      tz: studentTz_(s), next: nextLesson_(ls, now)
     };
     if (admin) {
       out.paid = s.paid; out.carry = s.carry;
@@ -63,7 +64,7 @@ function buildState_(ctx) {
     ls.slice().sort(function (a, b) { return ms_(b.date) - ms_(a.date); }).forEach(function (l) {
       lessonsOut.push({
         id: l.id, sid: l.sid, n: numbers[l.id] || 0, date: l.date, dur: l.dur, status: l.status,
-        signState: signState_(l, now), signedAt: l.signedAt, signedBy: l.signedBy, loggedAt: l.loggedAt, notes: l.notes
+        signState: signState_(l, now), signedAt: l.signedAt, signedBy: l.signedBy, loggedAt: l.loggedAt, notes: l.notes, hwDone: l.hwDone || []
       });
     });
     if (s.showPoints) {
@@ -111,11 +112,14 @@ function buildState_(ctx) {
       return { id: m.id, sid: m.sid, from: m.from, pid: m.pid, pname: pn, ts: m.ts, text: m.text, unread: unread };
     });
 
-  return {
+  var out = {
     env: isTestEnv_() ? 'test' : 'prod',
     studio: { zh: cfg.studio_name_zh, en: cfg.studio_name_en },
     now: iso_(now), rules: rules, me: me,
     students: studentsOut, parents: parentsOut, lessons: lessonsOut, points: points,
     notices: notices, messages: messages
   };
+  // 老师所在时区只给老师：学生和家长只看到自己所在时区的时间
+  if (admin) out.teacherTz = teacherTz_();
+  return out;
 }

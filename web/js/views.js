@@ -4,7 +4,7 @@
  * 或者作为 t() 的变量（t 会自动转义变量）。
  */
 import { t, tx, getLang } from './i18n.js';
-import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, localInputNow, AVATAR_EMOJI, AVATAR_COLORS } from './util.js';
+import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, AVATAR_EMOJI, AVATAR_COLORS, TZ_LIST, tzName, tzAbbr, fmtClock, fmtDateZ, fmtWhenZ, daysUntil, nowFields, wallFields, fieldsToMs } from './util.js';
 
 const lg = () => getLang();
 const byId = (arr, id) => arr.find(x => x.id === id);
@@ -13,20 +13,31 @@ const byId = (arr, id) => arr.find(x => x.id === id);
 export const role = S => S.data.me.role;
 export const unreadNotices = S => S.data.notices.filter(n => n.unread).length;
 export const unreadMsgs = S => S.data.messages.filter(m => m.unread).length;
+/** 作业按行拆成逐项（和后台 hwItems_ 一致）。 */
+export const hwItems = text => String(text || '').split('\n').map(x => x.trim()).filter(Boolean);
+const hwDoneOf = l => new Set((l.hwDone || []).filter(i => Number.isInteger(i)));
+/** 一节课的作业：{items, done:Set, open:数量}。 */
+export function hwOf(l) { const items = hwItems((l.notes || {}).homework), done = hwDoneOf(l); return { items, done, open: items.filter((_, i) => !done.has(i)).length }; }
+/** 学生（家长看当前孩子）还没勾的作业项数。 */
+export function hwOpenCount(S, sid) { return S.data.lessons.filter(l => (!sid || l.sid === sid) && l.status === 'done').reduce((a, l) => a + hwOf(l).open, 0); }
+const stuTz = (S, sid) => (byId(S.data.students, sid) || {}).tz || S.data.teacherTz || 'America/Denver';
+/** 老师用自己的时区，学生和家长用学生所在的时区。 */
+const viewTz = (S, sid) => (role(S) === 'admin' ? S.data.teacherTz : stuTz(S, sid));
 export function curKid(S) { const ks = S.data.students; return ks.find(k => k.id === S.kid) || ks[0] || null; }
 export function tabsFor(S) {
   if (role(S) === 'admin') return ['overview', 'students', 'record', 'notices', 'messages', 'points'];
-  const base = ['home', 'learning', 'lessons', 'notices', 'messages'];
+  const base = ['home', 'learning', 'lessons', 'homework', 'notices', 'messages'];
   if (S.data.students.some(s => s.showPoints)) base.push('points');
   return base;
 }
 export const defaultTab = S => (role(S) === 'admin' ? 'overview' : 'home');
+const logoImg = (size, cls = '') => `<img class="logo ${cls}" src="img/logo.png" width="${size}" height="${Math.round(size * 0.972)}" alt="${esc(tx('app.logoAlt'))}">`;
 const pill = (kind, text) => `<span class="pill ${kind}">${text}</span>`;
 
 /* ---------- 登录 ---------- */
 export function loginView(S) {
   const A = S.login;
-  const head = `<div class="login-h"><div><h1 style="font-size:1.7rem">${t('app.name')}</h1><p class="muted"><span class="work">${t('app.name2')}</span></p></div>${langBtn()}</div>`;
+  const head = `<div class="login-h"><div class="login-brand">${logoImg(56, 'login-logo')}<h1 style="font-size:1.6rem">${t('app.name')}</h1></div>${langBtn()}</div>`;
   const err = A.err ? `<p class="err" role="alert">${t(A.err)}</p>` : '';
   let body;
   if (A.step === 'email') {
@@ -54,7 +65,7 @@ export function loginView(S) {
 }
 
 export function unconfiguredView() {
-  return `<div class="login wrap"><div class="card"><h1>${t('app.name')}</h1><p>${t('boot.unconfigured')}</p></div></div>`;
+  return `<div class="login wrap"><div class="card"><div class="login-brand">${logoImg(48)}<h1>${t('app.name')}</h1></div><p>${t('boot.unconfigured')}</p></div></div>`;
 }
 
 const langBtn = () => `<button class="btn sm lang" data-act="lang" aria-label="${esc(tx('app.switchLang'))}">${lg() === 'zh' ? 'EN' : '中文'}</button>`;
@@ -65,16 +76,20 @@ export function shell(S, body) {
   const studio = d.studio[L] || d.studio.zh || t('app.name');
   const tabs = tabsFor(S);
   const badge = k => {
-    const n = k === 'notices' && me.role !== 'admin' ? unreadNotices(S) : k === 'messages' ? unreadMsgs(S) : 0;
+    const n = k === 'notices' && me.role !== 'admin' ? unreadNotices(S) : k === 'messages' ? unreadMsgs(S) : k === 'homework' ? hwOpenCount(S, (curKid(S) || {}).id) : 0;
     return n ? `<span class="badge" aria-label="${esc(tx('common.unread', { n }))}">${n}</span>` : '';
   };
   const showKids = me.role === 'parent' && d.students.length > 1 && S.tab !== 'home';
   const viewing = showKids ? `<div class="viewing"><span class="muted small">${t('par.viewing')}</span>${d.students.map(k => `<button class="kid-chip" data-act="kid" data-id="${esc(k.id)}" aria-pressed="${k.id === (curKid(S) || {}).id}">${avatar(k, 26)}${esc(k.name)}</button>`).join('')}</div>` : '';
   const env = d.env === 'test' ? `<div class="demo-note" role="note"><div class="wrap">${t('app.testEnv')}</div></div>` : '';
   const nameLine = me.role === 'admin' ? `<b>${t('role.admin')}</b>` : `<b>${esc(me.name)}</b> <span class="muted">${t('role.' + me.role)}</span>`;
-  return `<header class="bar"><div class="wrap">
-      <div class="brand"><div class="brand-t"><b>${esc(studio)}</b></div></div>
-      <div class="who">${nameLine}<button class="avbtn" data-act="av-open" aria-label="${esc(tx('av.change'))}">${avatar(me, 32)}</button>${langBtn()}<button class="btn sm" data-act="logout">${t('app.logout')}</button></div>
+  const who = S.preview
+    ? `<div class="who">${nameLine}${avatar(me, 32)}<button class="btn sm primary" data-act="preview-exit">${t('prev.exit')}</button></div>`
+    : `<div class="who">${nameLine}<button class="avbtn" data-act="av-open" aria-label="${esc(tx('av.change'))}">${avatar(me, 32)}</button>${langBtn()}<button class="btn sm" data-act="logout">${t('app.logout')}</button></div>`;
+  const pv = S.preview ? `<div class="prev-note" role="note"><div class="wrap">${t('prev.banner', { name: me.name })} <button class="btn sm" data-act="preview-exit">${t('prev.exit')}</button></div></div>` : '';
+  return `${pv}<header class="bar"><div class="wrap">
+      <div class="brand">${logoImg(34)}<div class="brand-t"><b>${esc(studio)}</b></div></div>
+      ${who}
     </div>
     <div class="wrap"><nav class="tabs" aria-label="${esc(tx('app.pages'))}">${tabs.map(k => `<button class="tab" data-act="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>${t('tab.' + k)}${badge(k)}</button>`).join('')}</nav></div>
   </header>${env}
@@ -87,6 +102,22 @@ function pieceList(ps) {
   return `<div class="pieces">${(ps || []).map(p => `<div class="piece"><span class="work">${esc(p.title)}</span><span class="muted small">${esc(p.source)}</span>${pill(pl(p.st), t('piece.' + p.st))}</div>`).join('')}</div>`;
 }
 
+/** 一节课的上课时间：学生和家长只看学生所在时区；老师看自己的时区，两地不同时再带上学生那边的。 */
+function lessonTimes(S, l) {
+  const L = lg(), st = byId(S.data.students, l.sid) || {};
+  if (role(S) !== 'admin') return fmtClock(l.date, st.tz, L);
+  const mine = S.data.teacherTz;
+  if (!st.tz || st.tz === mine) return fmtClock(l.date, mine, L);
+  return `${fmtClock(l.date, mine, L)} · ${tx('ov.theirTime', { when: fmtClock(l.date, st.tz, L), zone: tzAbbr(l.date, st.tz) })}`;
+}
+
+/** 作业清单（只读）：已完成的打勾；老师能看到学生的进度。 */
+function hwReadonly(l) {
+  const h = hwOf(l);
+  if (!h.items.length) return '—';
+  return `<ul class="hwlist">${h.items.map((x, i) => `<li class="${h.done.has(i) ? 'done' : ''}"><span aria-hidden="true">${h.done.has(i) ? '✓' : '○'}</span> ${esc(x)}</li>`).join('')}</ul><span class="small muted">${t('hw.progress', { a: h.items.length - h.open, b: h.items.length })}</span>`;
+}
+
 function lessonBlock(S, l, { canSign, withStudent } = {}) {
   const n = l.notes || {}, L = lg();
   const sign = l.signState === 'signed' ? pill('ok', '✓ ' + esc(fmtDT(l.signedAt, L)))
@@ -94,11 +125,13 @@ function lessonBlock(S, l, { canSign, withStudent } = {}) {
       : canSign ? `<button class="btn sm primary" data-act="sign" data-id="${esc(l.id)}">${t('les.sign')}</button>` : pill('wait', t('les.waiting'));
   const stu = withStudent ? byId(S.data.students, l.sid) : null;
   const del = role(S) === 'admin' ? `<button class="btn sm" data-act="lesson-del" data-id="${esc(l.id)}">${t('common.delete')}</button>` : '';
-  return `<div class="lesson"><div class="no num">${l.n}<small>${esc(fmtD(l.date, L))}</small></div><div>
+  const tz = viewTz(S, l.sid);
+  return `<div class="lesson"><div class="no num">${l.n}<small>${esc(fmtDateZ(l.date, tz, L))}</small></div><div>
     ${stu ? `<p><b>${esc(stu.name)}</b> <span class="muted small">· ${t('les.minutes', { n: l.dur })}</span></p>` : ''}
+    <p class="small muted num">${esc(lessonTimes(S, l))}</p>
     ${pieceList(n.pieces)}
     <dl class="kv"><dt>${t('les.focus')}</dt><dd>${esc(n.focus)}</dd><dt>${t('les.tempo')}</dt><dd class="work" style="font-style:normal">${esc(n.tempo)}</dd>
-    <dt>${t('les.homework')}</dt><dd>${esc(n.homework)}${n.due ? ` <span class="muted small">· ${t('les.due', { d: fmtYMD(n.due, L) })}</span>` : ''}</dd>
+    <dt>${t('les.homework')}</dt><dd>${hwReadonly(l)}${n.due ? ` <span class="muted small">· ${t('les.due', { d: fmtYMD(n.due, L) })}</span>` : ''}</dd>
     <dt>${t('les.signed')}</dt><dd>${sign}</dd></dl>${del ? `<div class="btns">${del}</div>` : ''}</div></div>`;
 }
 
@@ -149,6 +182,41 @@ function unreadStrip(S) {
   return `<section class="card"><div class="btns">${nN ? `<button class="btn" data-act="tab" data-tab="notices">${t('home.newNotices')} <span class="badge">${nN}</span></button>` : ''}${nM ? `<button class="btn" data-act="tab" data-tab="messages">${t('home.newReplies')} <span class="badge">${nM}</span></button>` : ''}</div></section>`;
 }
 
+/** “下次上课”：学生和家长只看到学生所在时区的时间，不出现老师那边的时区。 */
+function nextWhen(s) {
+  const L = lg(), n = daysUntil(s.next, s.tz);
+  const rel = n <= 0 ? t('nx.today') : n === 1 ? t('nx.tomorrow') : t('nx.days', { n });
+  return { rel, when: fmtWhenZ(s.next, s.tz, L, { weekday: true }), zone: tzAbbr(s.next, s.tz) };
+}
+function nextCard(S, s) {
+  if (!s.next) return `<section class="card"><div class="card-h"><h3>${t('nx.title')}</h3></div><p class="muted small">${t('nx.none')}</p></section>`;
+  const w = nextWhen(s);
+  return `<section class="card next"><div class="card-h"><h3>${t('nx.title')}</h3>${pill('wait', w.rel)}</div>
+    <div class="next-when num">${esc(w.when)} <span class="small muted">${esc(w.zone)}</span></div>
+    <p class="small">${t('nx.remind')}</p>${hwOpenCount(S, s.id) ? `<div class="btns"><button class="btn sm" data-act="kid-go" data-id="${esc(s.id)}" data-tab="homework">${t('tab.homework')} <span class="badge">${hwOpenCount(S, s.id)}</span></button></div>` : ''}</section>`;
+}
+
+/* ---------- 学生 / 家长：作业 ---------- */
+export function homeworkView(S) {
+  const s = curKid(S), L = lg();
+  if (!s) return '';
+  const lessons = S.data.lessons.filter(l => l.sid === s.id && hwOf(l).items.length);
+  const open = lessons.filter(l => hwOf(l).open > 0), shut = lessons.filter(l => hwOf(l).open === 0).slice(0, 8);
+  const dis = S.preview ? 'disabled' : '';
+  const card = l => {
+    const h = hwOf(l), tz = s.tz, due = (l.notes || {}).due;
+    return `<section class="card hw"><div class="card-h"><h3>${t('hw.fromLesson', { n: l.n, d: fmtDateZ(l.date, tz, L) })}</h3>${pill(h.open ? 'wait' : 'ok', t('hw.progress', { a: h.items.length - h.open, b: h.items.length }))}</div>
+      <div class="hwchecks">${h.items.map((x, i) => `<label class="hwitem ${h.done.has(i) ? 'done' : ''}"><input type="checkbox" data-change="hw" data-id="${esc(l.id)}" data-idx="${i}" ${h.done.has(i) ? 'checked' : ''} ${dis}><span>${esc(x)}</span></label>`).join('')}</div>
+      ${due ? `<p class="small muted">${t('les.due', { d: fmtYMD(due, L) })}</p>` : ''}
+      ${h.open === 0 ? `<p class="small ok-text">${t('hw.allDone')}</p>` : ''}</section>`;
+  };
+  return `<div class="stack"><div class="page-h"><h1>${t('tab.homework')}</h1><span class="muted">${esc(s.name)} · ${t('hw.sub')}</span></div>
+    ${nextCard(S, s)}
+    ${role(S) === 'parent' ? `<p class="small muted">${t('hw.parentNote')}</p>` : ''}
+    ${open.map(card).join('') || `<section class="card"><p class="muted">${t('hw.none')}</p></section>`}
+    ${shut.length ? `<div class="page-h"><h2>${t('hw.earlier')}</h2></div>${shut.map(card).join('')}` : ''}</div>`;
+}
+
 /* ---------- 学生 / 家长：首页 ---------- */
 export function homeView(S) {
   const d = S.data, me = d.me, L = lg();
@@ -162,6 +230,7 @@ export function homeView(S) {
         <button class="btn sm" data-act="kid-go" data-id="${esc(k.id)}" data-tab="lessons">${t('par.lessons')}</button><button class="btn sm" data-act="kid-go" data-id="${esc(k.id)}" data-tab="learning">${t('tab.learning')}</button></div>
         ${uns.length ? `<div class="callout">${t('par.toSign', { n: uns.length })} <button class="btn link small" data-act="kid-go" data-id="${esc(k.id)}" data-tab="lessons">${t('par.signNow')}</button></div>` : ''}
         ${tuitionPayBanner(k)}
+        ${k.next ? `<div class="callout next-line">${t('nx.title')}: <b>${esc(nextWhen(k).when)}</b> <span class="small muted">${esc(nextWhen(k).zone)}</span> ${pill('wait', esc(nextWhen(k).rel))}<div class="small">${t('nx.remind')}${hwOpenCount(S, k.id) ? ` <button class="btn link small" data-act="kid-go" data-id="${esc(k.id)}" data-tab="homework">${t('tab.homework')} (${hwOpenCount(S, k.id)})</button>` : ''}</div></div>` : ''}
         <div class="grid2"><div class="stack" style="gap:8px"><p class="small muted">${t('par.progress')}</p>${keyboard(k.tuition.used, tx('tu.kb', { n: k.tuition.used }))}
           <p class="small num">${t('par.progressVal', { u: k.tuition.used, n: k.total })}</p></div>
           <div class="stack" style="gap:8px"><p class="small muted">${t('par.learning')}</p>
@@ -175,6 +244,7 @@ export function homeView(S) {
   const uns = d.lessons.filter(l => l.sid === s.id && l.signState === 'pending');
   return `<div class="stack">${greet}${unreadStrip(S)}
     ${uns.length ? `<section class="card"><div class="card-h"><h2>${t('home.signTitle')}</h2>${d.points[s.id] ? pill('wait', t('home.signPts', { n: d.rules.sign })) : ''}</div>${uns.map(l => lessonBlock(S, l, { canSign: true })).join('')}</section>` : ''}
+    ${nextCard(S, s)}
     <div class="grid2">${tuitionCard(S, s)}${d.points[s.id] ? pointsPeek(S, s) : `<section class="card"><div class="card-h"><h3>${t('jr.title')}</h3></div>${journey(s)}</section>`}</div>
     ${d.points[s.id] ? `<section class="card"><div class="card-h"><h3>${t('jr.title')}</h3><button class="btn link small" data-act="tab" data-tab="learning">${t('home.whatLearning')}</button></div>${journey(s)}</section>` : ''}</div>`;
 }
@@ -261,24 +331,32 @@ export function overviewView(S) {
     const s = byId(d.students, l.sid);
     rows.push(`<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted">${t('ov.pendingSign', { n: l.n, d: fmtD(l.date, L) })}</div></div>${pill('wait', t('les.waiting'))}</div>`);
   });
+  const upcoming = active.filter(s => s.next).sort((a, b) => new Date(a.next) - new Date(b.next)).slice(0, 8);
+  const upRows = upcoming.map(s => {
+    const same = !s.tz || s.tz === d.teacherTz;
+    return `<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted num">${esc(fmtWhenZ(s.next, d.teacherTz, L, { weekday: true }))} ${esc(tzAbbr(s.next, d.teacherTz))}${same ? '' : ` · ${esc(tx('ov.theirTime', { when: fmtClock(s.next, s.tz, L), zone: tzAbbr(s.next, s.tz) }))}`}</div></div></div>`;
+  }).join('');
   return `<div class="stack"><div class="page-h"><h1>${t('tab.overview')}</h1><span class="muted">${esc(fmtD(new Date(), L))}</span></div>
     <div class="stats"><div class="stat"><b>${active.length}</b><span>${t('ov.students')}</span></div><div class="stat"><b>${month}</b><span>${t('ov.month')}</span></div>
       <div class="stat"><b>${pending.length}</b><span>${t('ov.pending')}</span></div><div class="stat ${due.length ? 'flag' : ''}"><b>${due.length}</b><span>${t('ov.due')}</span></div></div>
     <section class="card"><div class="card-h"><h2>${t('ov.todo')}</h2><button class="btn primary sm" data-act="tab" data-tab="record">${t('ov.logLesson')}</button></div>
-      <div class="rows">${rows.join('') || `<p class="muted">${t('ov.allClear')}</p>`}</div></section></div>`;
+      <div class="rows">${rows.join('') || `<p class="muted">${t('ov.allClear')}</p>`}</div></section>
+    <section class="card"><div class="card-h"><h2>${t('ov.upcoming')}</h2></div><div class="rows">${upRows || `<p class="muted small">${t('ov.upcomingNone')}</p>`}</div></section></div>`;
 }
 
 /* ---------- 老师：学生与家长 ---------- */
 export function studentsView(S) {
-  const d = S.data;
+  const d = S.data, L = lg();
   const showArch = S.showArchived;
   const list = d.students.filter(s => showArch || s.active);
   const parents = d.parents.filter(p => showArch || p.active);
   const kidName = id => (byId(d.students, id) || {}).name || '';
   return `<div class="stack"><div class="page-h"><h1>${t('tab.students')}</h1><div class="btns"><button class="chip" data-act="toggle-archived" aria-pressed="${!!showArch}">${t('stu.showArchived')}</button><button class="btn primary sm" data-act="student-new">${t('stu.add')}</button></div></div>
     <section class="card"><div class="rows">${list.map(s => `<div class="row">${avatar(s, 38)}<div class="grow"><b>${esc(s.name)}</b> ${s.kind === 'adult' ? pill('plain', t('stu.adult')) : ''}${s.active ? '' : pill('bad', t('stu.archived'))}
-        <div class="small muted">${esc(s.level)}${s.email ? ` · ${esc(s.email)}` : ''}</div></div>
+        <div class="small muted">${esc(s.level)}${s.email ? ` · ${esc(s.email)}` : ''}</div>
+        <div class="small muted">${esc(tzName(s.tz, L))}${s.next ? ` · ${esc(tx('nx.row', { when: fmtWhenZ(s.next, d.teacherTz, L) }))}` : ''}</div></div>
         <div class="small num">${t('stu.tuitionRow', { u: s.tuition.used, l: Math.max(0, s.tuition.left) })}${s.tuition.due ? ' ' + pill('bad', t('stu.due')) : ''}</div>
+        ${s.active ? `<button class="btn sm" data-act="preview" data-id="${esc(s.id)}">${t('prev.btn')}</button>` : ''}
         <button class="btn sm" data-act="student-edit" data-id="${esc(s.id)}">${t('common.edit')}</button></div>`).join('') || `<p class="muted">${t('stu.none')}</p>`}</div></section>
     <div class="page-h"><h2>${t('par.title')}</h2><button class="btn sm" data-act="parent-new">${t('par.add')}</button></div>
     <section class="card"><div class="rows">${parents.map(p => `<div class="row">${avatar(p, 34)}<div class="grow"><b>${esc(p.name)}</b>${p.active ? '' : ' ' + pill('bad', t('stu.archived'))}<div class="small muted">${esc(p.email)}</div></div>
@@ -288,7 +366,7 @@ export function studentsView(S) {
 const val = v => esc(v == null ? '' : v);
 export function studentModal(S) {
   const d = S.data, id = S.modal.id, s = id ? byId(d.students, id) : null;
-  const v = s || { name: '', email: '', kind: 'child', lang: 'zh', birth: '', start: '', level: '', grp: '', dur: 30, paid: 0, carry: 0, adj: 0, showPoints: true, books: [], active: true };
+  const v = s || { name: '', email: '', kind: 'child', lang: 'zh', tz: d.teacherTz, birth: '', start: '', level: '', grp: '', dur: 30, paid: 0, carry: 0, adj: 0, showPoints: true, books: [], active: true };
   const sel = (name, cur, opts) => `<select name="${name}">${opts.map(([k, lab]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${lab}</option>`).join('')}</select>`;
   const parents = d.parents.filter(p => p.active);
   const pairs = s && s.kind === 'child' ? `<div class="f full"><b>${t('stu.parents')}</b>
@@ -303,6 +381,7 @@ export function studentModal(S) {
         <label class="f">${t('stu.email')}<input type="email" name="email" value="${val(v.email)}" placeholder="${esc(tx('stu.emailPh'))}"></label>
         <label class="f">${t('stu.kind')}${sel('kind', v.kind, [['child', tx('stu.child')], ['adult', tx('stu.adult')]])}</label>
         <label class="f">${t('stu.lang')}${sel('lang', v.lang, [['zh', '中文'], ['en', 'English']])}</label>
+        <label class="f">${t('stu.tz')}${sel('tz', v.tz || d.teacherTz, TZ_LIST.map(([id, zh, en]) => [id, lg() === 'zh' ? zh : en]))}</label>
         <label class="f">${t('stu.birth')}<input type="date" name="birth" value="${val(v.birth)}"></label>
         <label class="f">${t('stu.start')}<input type="date" name="start" value="${val(v.start)}"></label>
         <label class="f full">${t('stu.level')}<input type="text" name="level" value="${val(v.level)}" maxlength="80"></label>
@@ -347,35 +426,69 @@ export function remindModal(S) {
       <div class="btns"><button class="btn primary" type="submit" ${to.length ? '' : 'disabled'}>${t('rem.send')}</button></div></form>`;
 }
 
+const CROP = 240; // 裁剪框的边长（像素）
 export function avatarModal(S) {
-  const me = S.data.me, a = me.avatar || {};
+  const me = S.data.me, a = me.avatar || {}, L = lg();
+  if (S.crop) {
+    return `<div class="card-h"><h2>${t('av.title')}</h2><button class="btn sm" data-act="close">${t('common.close')}</button></div>
+      <p class="small muted">${t('av.cropHelp')}</p>
+      <div class="crop-wrap"><canvas id="crop-cv" class="crop-cv" width="${CROP}" height="${CROP}" data-drag="crop" aria-label="${esc(tx('av.cropHelp'))}"></canvas></div>
+      <label class="f crop-zoom">${t('av.zoom')}<input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="${S.crop.zoom}" data-input="crop-zoom"></label>
+      <div class="btns"><button class="btn primary" data-act="crop-save" ${S.busy ? 'disabled' : ''}>${t('av.use')}</button>
+        <label class="btn file-btn">${t('av.another')}<input type="file" accept="image/*" data-change="av-file" hidden></label></div>`;
+  }
   const draft = S.avDraft || (a.t === 'emoji' ? { v: a.v, c: a.c } : { v: null, c: AVATAR_COLORS[0] });
-  const preview = draft.v ? { name: me.name, avatar: { t: 'emoji', v: draft.v, c: draft.c } } : { name: me.name, avatar: null };
+  const preview = a.t === 'img' && !S.avDraft ? { name: me.name, avatar: a } : draft.v ? { name: me.name, avatar: { t: 'emoji', v: draft.v, c: draft.c } } : { name: me.name, avatar: null };
+  const tz = me.role === 'admin' ? `<div class="f tz-box"><b>${t('tz.mine')}</b><select id="me-tz" data-change="me-tz">${TZ_LIST.map(([id, zh, en]) => `<option value="${id}" ${id === S.data.teacherTz ? 'selected' : ''}>${esc(L === 'zh' ? zh : en)}</option>`).join('')}</select><p class="small muted">${t('tz.mineHelp')}</p></div>` : '';
   return `<div class="card-h"><h2>${t('av.title')}</h2><button class="btn sm" data-act="close">${t('common.close')}</button></div>
     <div style="display:flex;gap:14px;align-items:center">${avatar(preview, 64)}<span class="small muted">${t('av.help')}</span></div>
+    <div class="btns"><label class="btn file-btn">${t('av.upload')}<input type="file" accept="image/*" data-change="av-file" hidden></label></div>
     <div class="av-grid">${AVATAR_EMOJI.map(v => `<button class="av-opt" data-act="av-pick" data-v="${v}" aria-pressed="${draft.v === v}" aria-label="${v}">${v}</button>`).join('')}</div>
     <div class="opt-row"><span>${t('av.color')}</span><div class="chips">${AVATAR_COLORS.map(c => `<button class="sw" style="background:${c}" data-act="av-col" data-c="${c}" aria-pressed="${draft.c === c}" aria-label="${c}"></button>`).join('')}</div></div>
-    <div class="btns"><button class="btn primary" data-act="av-save" ${draft.v ? '' : 'disabled'}>${t('common.save')}</button>${me.avatar ? `<button class="btn" data-act="av-clear">${t('av.clear')}</button>` : ''}</div>`;
+    <div class="btns"><button class="btn primary" data-act="av-save" ${draft.v ? '' : 'disabled'}>${t('common.save')}</button>${me.avatar ? `<button class="btn" data-act="av-clear">${t('av.clear')}</button>` : ''}</div>${tz}`;
 }
 
 /* ---------- 老师：记课 ---------- */
+const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+/** 12 小时制的时间选择：时 : 分 上午/下午。不用 <input type=time>，因为它显示 12 还是 24 小时由浏览器说了算。 */
+function timePick(prefix, f) {
+  const mins = Array.from({ length: 12 }, (_, i) => i * 5); if (!mins.includes(f.mi)) mins.push(f.mi);
+  mins.sort((a, b) => a - b);
+  const sel = (name, label, opts, cur) => `<select id="rec-${name}" name="${name}" class="rec-tf" aria-label="${esc(tx(label))}">${opts.map(([v, lab]) => `<option value="${v}" ${String(v) === String(cur) ? 'selected' : ''}>${lab}</option>`).join('')}</select>`;
+  return `<div class="tp">${sel(prefix + 'h', 'rec.hour', HOURS.map(h => [h, h]), f.h12)}<span>:</span>${sel(prefix + 'm', 'rec.minute', mins.map(m => [m, String(m).padStart(2, '0')]), f.mi)}${sel(prefix + 'ap', 'rec.ampm', [['AM', t('time.am')], ['PM', t('time.pm')]], f.ap)}</div>`;
+}
+/** 记课表单里“学生那边是几点”的提示文字（纯文字，由 app.js 在输入变化时更新）。 */
+export function tzHint(S, sid, ms) {
+  const st = byId(S.data.students, sid), L = lg();
+  if (!st || ms == null) return '';
+  if (!st.tz || st.tz === S.data.teacherTz) return tx('rec.sameTz');
+  return tx('rec.studentTime', { when: fmtWhenZ(ms, st.tz, L, { weekday: true }), zone: tzAbbr(ms, st.tz) + ' · ' + tzName(st.tz, L) });
+}
 export function recordView(S) {
   const d = S.data, L = lg();
   const act = d.students.filter(s => s.active);
   const pick = S.recSid && byId(act, S.recSid) ? S.recSid : (act[0] || {}).id;
   const cur = byId(act, pick) || { dur: 30 };
   const recent = d.lessons.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
+  const f = nowFields(d.teacherTz);
+  const hintMs = fieldsToMs(f.date, f.h12, f.mi, f.ap, d.teacherTz);
   return `<div class="stack"><div class="page-h"><h1>${t('rec.title')}</h1><span class="muted">${t('rec.sub')}</span></div>
   <div class="grid2">
   <form class="card" data-form="rec-save"><div class="form">
     <label class="f">${t('rec.student')}<select id="rec-student" name="sid" data-change="rec-student">${act.map(s => `<option value="${esc(s.id)}" ${s.id === pick ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>
-    <label class="f">${t('rec.time')}<input type="datetime-local" id="rec-date" name="date" value="${esc(localInputNow())}"></label>
     <label class="f">${t('rec.dur')}<input type="number" id="rec-dur" name="dur" value="${esc(cur.dur)}" min="10" max="180" step="5"></label>
-    <label class="f">${t('rec.due')}<input type="date" id="rec-due" name="due"></label>
+    <div class="f full"><span>${t('rec.time')} <span class="muted small">· ${esc(tzAbbr(Date.now(), d.teacherTz))} ${esc(tzName(d.teacherTz, L))}</span></span>
+      <div class="tp-row"><input type="date" id="rec-date" name="date" class="rec-tf" value="${esc(f.date)}" aria-label="${esc(tx('rec.date'))}">${timePick('t', f)}</div>
+      <p class="small hint" id="rec-hint">${esc(tzHint(S, pick, hintMs))}</p></div>
     <label class="f full">${t('rec.pieces')}<textarea id="rec-pieces" name="pieces" placeholder="${esc(tx('rec.piecesPh'))}"></textarea></label>
     <label class="f full">${t('rec.focus')}<input type="text" id="rec-focus" name="focus" maxlength="300"></label>
     <label class="f">${t('rec.tempo')}<input type="text" id="rec-tempo" name="tempo" maxlength="60" placeholder="♩ = 80"></label>
-    <label class="f full">${t('rec.homework')}<input type="text" id="rec-hw" name="homework" maxlength="400"></label>
+    <label class="f">${t('rec.due')}<input type="date" id="rec-due" name="due"></label>
+    <label class="f full">${t('rec.homework')}<textarea id="rec-hw" name="homework" style="min-height:72px" maxlength="800"></textarea><span class="small muted">${t('rec.hwHelp')}</span></label>
+    <div class="f full"><span>${t('rec.next')}</span>
+      <div class="tp-row"><input type="date" id="rec-ndate" name="ndate" class="rec-tf" aria-label="${esc(tx('rec.date'))}">${timePick('n', f)}
+        <button class="btn sm" type="button" data-act="rec-next7">${t('rec.next7')}</button><button class="btn sm link" type="button" data-act="rec-next-clear">${t('rec.nextClear')}</button></div>
+      <p class="small hint" id="rec-nhint"></p><span class="small muted">${t('rec.nextHelp')}</span></div>
   </div><div class="btns"><button class="btn primary" type="submit" ${S.busy ? 'disabled' : ''}>${t('rec.save')}</button></div>
   <p class="small muted">${t('rec.langNote')}</p></form>
   <section class="card"><h3>${t('rec.afterTitle')}</h3><div class="steps">
@@ -443,6 +556,6 @@ function adminPoints(S) {
 
 export const VIEWS = {
   overview: overviewView, students: studentsView, record: recordView, notices: noticesView, messages: messagesView, points: pointsView,
-  home: homeView, learning: learningView, lessons: lessonsView
+  home: homeView, learning: learningView, lessons: lessonsView, homework: homeworkView
 };
 export const MODALS = { student: studentModal, parent: parentModal, confirm: confirmModal, remind: remindModal, avatar: avatarModal };

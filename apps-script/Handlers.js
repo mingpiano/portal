@@ -40,21 +40,33 @@ function pairedParents_(studentId) {
 
 function cleanAvatar_(a) {
   if (a == null) return null;
+  if (a.t === 'img') {
+    // 用户上传的照片：网页里已经裁成小方图并压缩成 JPEG，这里只认这个格式和大小
+    var v = String(a.v == null ? '' : a.v);
+    if (v.length > LIMITS.avatarImg || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/]+={0,2}$/.test(v)) fail_('bad_request', 'avatar');
+    return { t: 'img', v: v };
+  }
   if (a.t !== 'emoji' || AVATAR_EMOJI.indexOf(a.v) < 0 || AVATAR_COLORS.indexOf(a.c) < 0) fail_('bad_request', 'avatar');
   return { t: 'emoji', v: a.v, c: a.c };
 }
 
 function hProfileSave_(ctx, p) {
-  var avatar = cleanAvatar_(p.avatar);
-  var row;
-  if (ctx.role === 'admin') {
-    row = dbAll_('Admins').filter(function (a) { return normEmail_(a.email) === ctx.id; })[0];
-    dbUpdate_('Admins', row, { avatar: avatar });
-  } else if (ctx.role === 'parent') {
-    row = dbAll_('Parents').filter(function (x) { return x.id === ctx.id; })[0];
-    dbUpdate_('Parents', row, { avatar: avatar });
-  } else {
-    dbUpdate_('Students', findStudent_(ctx.id), { avatar: avatar });
+  if (p.tz !== undefined) {
+    if (ctx.role !== 'admin') fail_('forbidden'); // 只有老师能改“老师所在时区”
+    setConfig_('teacher_tz', oneOf_(p.tz, TZ_LIST, 'tz'));
+  }
+  if (p.avatar !== undefined) {
+    var avatar = cleanAvatar_(p.avatar);
+    var row;
+    if (ctx.role === 'admin') {
+      row = dbAll_('Admins').filter(function (a) { return normEmail_(a.email) === ctx.id; })[0];
+      dbUpdate_('Admins', row, { avatar: avatar });
+    } else if (ctx.role === 'parent') {
+      row = dbAll_('Parents').filter(function (x) { return x.id === ctx.id; })[0];
+      dbUpdate_('Parents', row, { avatar: avatar });
+    } else {
+      dbUpdate_('Students', findStudent_(ctx.id), { avatar: avatar });
+    }
   }
   return {};
 }
@@ -78,6 +90,7 @@ function hStudentSave_(ctx, p) {
     carry: int_(r.carry == null || r.carry === '' ? 0 : r.carry, 0, 5000, 'carry'),
     showPoints: r.showPoints == null ? kind === 'child' : bool_(r.showPoints)
   };
+  if (r.tz !== undefined && r.tz !== '') fields.tz = oneOf_(r.tz, TZ_LIST, 'tz');
   var all = dbAll_('Students');
   if (email && all.some(function (s) { return s.id !== r.id && s.email && normEmail_(s.email) === email; })) fail_('email_taken');
   if (kind === 'adult' && r.id && dbAll_('Pairs').some(function (x) { return x.studentId === r.id; })) fail_('adult_has_parent');
@@ -89,6 +102,7 @@ function hStudentSave_(ctx, p) {
     return { id: row.id };
   }
   var rec = fields;
+  rec.tz = fields.tz || teacherTz_();
   rec.id = newId_('s'); rec.claimed = false; rec.avatar = null; rec.books = []; rec.active = true; rec.created = iso_(now_());
   dbInsert_('Students', rec);
   return { id: rec.id };
@@ -166,20 +180,32 @@ function hLessonLog_(ctx, p) {
     return { title: str_(x.title, LIMITS.piece, { required: true, label: 'piece' }), source: str_(x.source, LIMITS.piece),
       st: oneOf_(x.st || 'new', ['new', 'review', 'done'], 'piece status') };
   });
+  var homework = str_(p.homework, LIMITS.homework);
+  if (hwItems_(homework).length > LIMITS.hwItems) fail_('too_long', 'homework items');
+  // 下次上课时间（可不填）：必须在这节课之后、一年之内
+  var nextMs = 0;
+  if (p.next != null && p.next !== '') {
+    nextMs = Date.parse(p.next);
+    if (!isFinite(nextMs) || nextMs <= dateMs || nextMs > dateMs + 366 * 86400000) fail_('bad_request', 'next');
+  }
   var notes = { pieces: pieces, focus: str_(p.focus, LIMITS.focus), tempo: str_(p.tempo, LIMITS.tempo),
-    homework: str_(p.homework, LIMITS.homework), due: dateOnly_(p.due, 'due') };
+    homework: homework, due: dateOnly_(p.due, 'due') };
+  if (nextMs) notes.next = iso_(nextMs);
   var dup = dbAll_('Lessons').some(function (l) { return l.sid === s.id && Math.abs(ms_(l.date) - dateMs) < 60000; });
   if (dup) fail_('duplicate');
 
   var id = newId_('l');
   dbInsert_('Lessons', { id: id, sid: s.id, date: iso_(dateMs), dur: dur, status: 'done', confirmedAt: '', signedAt: '',
-    signedBy: '', loggedAt: iso_(now), notes: notes });
+    signedBy: '', loggedAt: iso_(now), notes: notes, hwDone: [] });
 
   if (getConfigMap_()['mail.lessonSign'] === 'true') {
-    var dateText = Utilities.formatDate(new Date(dateMs), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    // 邮件里的时间按学生所在时区写，学生看到的和自己的钟一致
+    var tz = studentTz_(s);
+    var dateText = Utilities.formatDate(new Date(dateMs), tz, 'yyyy-MM-dd');
+    var nextText = nextMs ? fmtTz_(nextMs, tz) : '';
     var parents = pairedParents_(s.id);
-    if (parents.length) parents.forEach(function (pr) { sendMail_(pr.email, mailLessonSign_(s.name, dateText, pr.lang), 'lesson'); });
-    else if (s.email) sendMail_(s.email, mailLessonSign_(s.name, dateText, s.lang), 'lesson');
+    if (parents.length) parents.forEach(function (pr) { sendMail_(pr.email, mailLessonSign_(s.name, dateText, pr.lang, nextText), 'lesson'); });
+    else if (s.email) sendMail_(s.email, mailLessonSign_(s.name, dateText, s.lang, nextText), 'lesson');
   }
   return { id: id };
 }
@@ -200,6 +226,37 @@ function hLessonSign_(ctx, p) {
   if (signState_(l, now_()) === 'auto') fail_('already_confirmed');
   dbUpdate_('Lessons', l, { signedAt: iso_(now_()), signedBy: ctx.role === 'parent' ? 'parent:' + ctx.id : 'student' });
   return {};
+}
+
+/* ---------- 作业勾选、预览 ---------- */
+
+/** 学生（或家长）勾选 / 取消勾选某一节课里的第几项作业。 */
+function hHomeworkCheck_(ctx, p) {
+  var l = dbAll_('Lessons').filter(function (x) { return x.id === String(p.id || ''); })[0];
+  if (!l) fail_('forbidden');
+  var s = findStudent_(l.sid);
+  if (!s || !canAccessStudent_(ctx, s)) fail_('forbidden');
+  var items = hwItems_(l.notes && l.notes.homework);
+  if (typeof p.idx !== 'number') fail_('bad_request', 'idx'); // null 和字符串不当作 0
+  var idx = int_(p.idx, 0, Math.max(items.length - 1, 0), 'idx');
+  if (!items.length) fail_('bad_request', 'idx');
+  var done = (l.hwDone || []).filter(function (i) { return i < items.length; });
+  var has = done.indexOf(idx) >= 0;
+  if (bool_(p.on) && !has) done.push(idx);
+  if (!bool_(p.on) && has) done = done.filter(function (i) { return i !== idx; });
+  done.sort(function (a, b) { return a - b; });
+  dbUpdate_('Lessons', l, { hwDone: done });
+  return {};
+}
+
+/**
+ * 老师预览：返回“这位学生登录后会看到的全部数据”，用的是和学生登录时同一个组装函数，
+ * 所以预览里看到的和学生真实看到的一模一样。只读：网页在预览模式下不会发出任何修改请求。
+ */
+function hPreviewState_(ctx, p) {
+  var s = findStudent_(String(p.sid || ''));
+  if (!s || !s.active) fail_('not_found');
+  return { preview: buildState_({ role: 'student', id: s.id, email: '' }) };
 }
 
 /* ---------- 学费 ---------- */

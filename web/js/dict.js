@@ -5,8 +5,8 @@
  */
 const ROWS = [
   /* 应用 */
-  ['app.name', '琴房', 'Piano Studio'],
-  ['app.name2', 'Piano Studio', '琴房'],
+  ['app.name', 'Ming’s Piano Studio', 'Ming’s Piano Studio'],
+  ['app.logoAlt', 'Ming’s Piano Studio 标志', 'Ming’s Piano Studio logo'],
   ['app.logout', '退出登录', 'Sign out'],
   ['app.pages', '页面', 'Pages'],
   ['app.switchLang', '切换语言 / Switch language', 'Switch language / 切换语言'],
@@ -40,6 +40,7 @@ const ROWS = [
   ['tab.home', '首页', 'Home'],
   ['tab.learning', '正在学习', 'Learning now'],
   ['tab.lessons', '课程记录', 'Lessons'],
+  ['tab.homework', '作业', 'Homework'],
   ['role.admin', '老师', 'Teacher'],
   ['role.parent', '家长', 'Parent'],
   ['role.student', '学生', 'Student'],
@@ -90,6 +91,8 @@ const ROWS = [
   ['err.network', '连不上服务器，请检查网络后再试。', 'Cannot reach the server. Check your connection and try again.'],
   ['err.server', '服务器出错了，请稍后再试；如果一直这样，请联系老师。', 'The server had a problem. Try again later, and tell your teacher if it keeps happening.'],
   ['err.mail_failed', '邮件没有发出去。', 'The email could not be sent.'],
+  ['err.bad_time', '这个时间不存在（夏令时切换时被跳过的那一小时），请换一个。', 'That time does not exist (the hour skipped when daylight saving starts). Please pick another.'],
+  ['err.next_before', '下次上课时间要晚于这节课。', 'The next lesson must be after this one.'],
   ['err.rec_pieces', '请至少写一首曲目，每行一首，曲名不能为空。', 'Please enter at least one piece, one per line, each with a title.'],
 
   /* 首页（学生 / 家长） */
@@ -298,7 +301,7 @@ const ROWS = [
 
   /* 头像 */
   ['av.change', '更换头像', 'Change avatar'],
-  ['av.title', '我的头像', 'My avatar'],
+  ['av.title', '我的资料', 'My profile'],
   ['av.help', '选一个图案和底色。', 'Pick a symbol and a color.'],
   ['av.color', '底色', 'Background color'],
   ['av.clear', '用字母头像', 'Use initials'],
@@ -325,7 +328,64 @@ const ROWS = [
   ['rec.s2b', '有家长的孩子发给家长，其他发给学生本人。点“确认签字”就算签了，签字 +{n} 分；48 小时没签自动确认，不加分。', 'It goes to the parent if there is one, otherwise to the student. Signing earns +{n}; after 48 hours it is confirmed automatically without points.'],
   ['rec.s3', '学费计数加一', 'The tuition count goes up by one'],
   ['rec.s3b', '上满 10 节时，“总览”的“需要处理”里会出现学费提醒。', 'After 10 lessons a tuition reminder appears under To do on the Overview.'],
-  ['rec.recent', '最近的记录', 'Recent lessons']
+  ['rec.recent', '最近的记录', 'Recent lessons'],
+  ['rec.hwHelp', '每行写一项作业，学生可以逐项勾选。最多 20 项。', 'One homework item per line; students tick them off one by one. Up to 20 items.'],
+  ['rec.date', '日期', 'Date'],
+  ['rec.hour', '时', 'Hour'],
+  ['rec.minute', '分', 'Minute'],
+  ['rec.ampm', '上午 / 下午', 'AM / PM'],
+  ['time.am', '上午', 'AM'],
+  ['time.pm', '下午', 'PM'],
+  ['rec.studentTime', '学生那边：{when}（{zone}）', 'Student\'s side: {when} ({zone})'],
+  ['rec.sameTz', '和学生在同一个时区', 'Same time zone as the student'],
+  ['rec.next', '下次上课时间（可不填）', 'Next lesson (optional)'],
+  ['rec.nextHelp', '选了日期，学生和家长就会看到“下次上课”的倒计时，以及练琴和完成作业的提醒。不填就不显示。', 'Pick a date and students and parents see a countdown to the next lesson, with a reminder to practice and finish the homework. Leave blank to skip.'],
+  ['rec.next7', '一周后同一时间', 'Same time next week'],
+  ['rec.nextClear', '清除', 'Clear'],
+
+  /* 时区 */
+  ['tz.mine', '我所在的时区', 'My time zone'],
+  ['tz.mineHelp', '记课时的上课时间按这个时区填。学生和家长看到的会自动换算成他们自己所在时区的时间。', 'Lesson times are entered in this time zone. Students and parents see them converted to their own time zone.'],
+  ['stu.tz', '学生所在时区', 'Student\'s time zone'],
+  ['stu.tzHelp', '学生和家长看到的上课时间按这个时区显示。', 'Lesson times are shown to the student and parents in this time zone.'],
+
+  /* 下次上课 */
+  ['nx.title', '下次上课', 'Next lesson'],
+  ['nx.today', '今天', 'Today'],
+  ['nx.tomorrow', '明天', 'Tomorrow'],
+  ['nx.days', '{n} 天后', 'In {n} days'],
+  ['nx.remind', '上课前请练琴，并完成作业。', 'Please practice and finish your homework before the lesson.'],
+  ['nx.none', '老师还没有安排下次上课时间。', 'No next lesson has been scheduled yet.'],
+  ['nx.row', '下次上课 {when}', 'Next lesson {when}'],
+  ['ov.upcoming', '接下来的课', 'Upcoming lessons'],
+  ['ov.upcomingNone', '还没有填下次上课时间。记课时可以填。', 'No next lesson set yet. You can add one when logging a lesson.'],
+  ['ov.theirTime', '学生那边 {when}（{zone}）', 'Student: {when} ({zone})'],
+
+  /* 作业 */
+  ['hw.sub', '做完一项就勾一项', 'Tick each item when you finish it'],
+  ['hw.open', '待完成', 'To do'],
+  ['hw.finished', '已完成', 'Done'],
+  ['hw.none', '目前没有布置作业。', 'No homework right now.'],
+  ['hw.progress', '{a} / {b} 项已完成', '{a} of {b} done'],
+  ['hw.allDone', '这节课的作业全部完成了，真棒！', 'All the homework for this lesson is done. Well done!'],
+  ['hw.fromLesson', '第 {n} 节课 · {d}', 'Lesson {n} · {d}'],
+  ['hw.earlier', '以前的作业', 'Earlier homework'],
+  ['hw.parentNote', '孩子完成一项，就在这里替他勾一项。', 'Tick an item here when your child finishes it.'],
+
+  /* 预览 */
+  ['prev.btn', '预览学生页', 'Preview as student'],
+  ['prev.banner', '预览模式：这是 <b>{name}</b> 登录后看到的页面。所有操作都已关闭，不会改动任何数据。', 'Preview: this is what <b>{name}</b> sees after signing in. All actions are switched off and nothing will be changed.'],
+  ['prev.exit', '退出预览', 'Exit preview'],
+  ['prev.readonly', '预览模式下不能操作。', 'This is a preview; actions are switched off.'],
+
+  /* 头像上传 */
+  ['av.upload', '上传照片', 'Upload a photo'],
+  ['av.cropHelp', '拖动照片调整位置，用滑块放大缩小。圆圈里的部分就是你的头像。', 'Drag the photo to move it and use the slider to zoom. The part inside the circle becomes your avatar.'],
+  ['av.zoom', '缩放', 'Zoom'],
+  ['av.use', '使用这张照片', 'Use this photo'],
+  ['av.another', '换一张', 'Choose another'],
+  ['av.notImage', '这个文件无法作为图片打开。请换一张 JPG 或 PNG 照片。', 'That file cannot be opened as a picture. Please choose a JPG or PNG photo.'],
+  ['av.tooBig', '图片文件太大了（超过 15 MB），请换一张小一点的。', 'That picture is too large (over 15 MB). Please choose a smaller one.']
 ];
 
 export const DICT = { zh: {}, en: {} };

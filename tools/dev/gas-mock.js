@@ -130,8 +130,10 @@ function createRuntime(opts = {}) {
       DigestAlgorithm: { SHA_256: 'SHA_256' }, Charset: { UTF_8: 'UTF_8' },
       sleep: ms => { rt.slept += ms; },
       formatDate: (d, tz, fmt) => {
-        if (fmt !== 'yyyy-MM-dd') throw new Error('mock: unsupported format ' + fmt);
-        return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+        if (fmt === 'yyyy-MM-dd') return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+        // 和真正的 Apps Script 一样：h:mm a → “3:00 PM”（新版 ICU 会在 PM 前放窄空格，统一成普通空格）
+        if (fmt === 'h:mm a') return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true }).format(d).replace(/\u202f/g, ' ');
+        throw new Error('mock: unsupported format ' + fmt);
       }
     },
     Session: {

@@ -48,6 +48,7 @@ npx @google/clasp push
 - 第一条会生成一个文件，里面记着这个后台项目的编号。
 - 第三条如果问 `overwrite manifest?`，输入 `y` 回车。
 - 看到 `Pushed 11 files` 左右就成功了。
+- ⚠️ `create-script` 会把 `apps-script/appsscript.json` 改成一个默认版本（缺权限声明）。**建完后、`push` 之前**运行 `git checkout apps-script/appsscript.json` 恢复正确的那份。
 
 ### 第 3 步　初始化（建表、灌假数据）
 
@@ -134,8 +135,9 @@ npx @google/clasp push
 ## 以后改了代码怎么更新
 
 1. 终端：`npx @google/clasp push`。
-2. 编辑器：**部署 → 管理部署 → 点铅笔 → 版本选“新版本” → 部署**（网址不变，不用改网站）。
-3. 网站有改动：`git add -A`、`git commit -m "说明"`、`git push`。
+2. 如果弹出新的授权请求，点“审核权限”→允许。
+3. 编辑器：**部署 → 管理部署 → 点铅笔 → 版本选“新版本” → 部署**（网址不变，不用改网站）。
+4. 网站有改动：`git add -A`、`git commit -m "说明"`、`git push`。
 
 ---
 
@@ -146,7 +148,7 @@ npx @google/clasp push
 | 网站显示“还没有连接到后台” | 第 6 步没做，或没等 Actions 变绿 |
 | 登录一直提示“连不上服务器” | 第 4 步“谁有权访问”没选“任何人”，或网址复制错了（要以 `/exec` 结尾） |
 | 收不到验证码 | 先看垃圾邮件箱；确认邮箱是老师登记过的那个；每个邮箱每小时最多 3 封 |
-| 提示“表格结构和程序对不上” | 更新代码后，在编辑器运行一次 **upgradeSchema** |
+| 提示“表格结构和程序对不上” | 更新代码后，在编辑器运行一次 **upgradeSchema**（新版本第一次有人登录时也会自动升级表格） |
 | 想知道现在是测试还是正式 | 编辑器运行 **printStatus**，看日志第一行 |
 | 提示 “User has not enabled the Apps Script API” | 做“开始之前”的第 4 步 |
 | Actions 红色 | 点进去 Re-run；还不行就把报错文字发给我 |

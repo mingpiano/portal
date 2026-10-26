@@ -95,30 +95,30 @@ function seedFakeData_(owner) {
   });
 
   var cast = [
-    { id: 's-emma', name: 'Emma Li', email: alias_(owner, 'emma'), kind: 'child', lang: 'en', birth: yearsAgo(9, 40), start: yearsAgo(1, -5), level: 'Beginner · Thompson 3', grp: 'g1', dur: 45, paid: 2, carry: 14, wd: 2,
+    { id: 's-emma', name: 'Emma Li', email: alias_(owner, 'emma'), kind: 'child', lang: 'en', birth: yearsAgo(9, 40), start: yearsAgo(1, -5), level: 'Beginner · Thompson 3', grp: 'g1', dur: 45, paid: 2, carry: 14, wd: 2, tz: 'America/New_York', nextIn: 3,
       avatar: { t: 'emoji', v: '🦊', c: '#F6D7B0' }, books: [{ n: 'Thompson 3', s: 'current' }, { n: 'Thompson 2', s: 'done' }],
       notes: [
         { pieces: [['Arabesque', 'Burgmüller Op. 100 No. 2', 'new']], focus: 'Keep the right-hand triplets in bars 1–8 even; relax the wrist.', tempo: '♩ = 80', homework: 'Arabesque bars 1–8 slowly, 15 minutes a day.' },
         { pieces: [['Arabesque', 'Burgmüller Op. 100 No. 2', 'review'], ['Etude No. 40', 'Czerny Op. 599', 'new']], focus: 'Short left-hand chords; make p and f more contrasted.', tempo: '♩ = 92', homework: 'Play Arabesque all the way through; Czerny hands separately.' },
         { pieces: [['Arabesque', 'Burgmüller Op. 100 No. 2', 'done'], ['Etude No. 40', 'Czerny Op. 599', 'review']], focus: "Don't start the ritardando too early.", tempo: '♩ = 108', homework: 'Czerny with the metronome.' },
-        { pieces: [['Minuet in G', 'Petzold BWV Anh. 114', 'new']], focus: 'Hands separately; left-hand fingering 1-2-3 in bars 9–16.', tempo: '♩ = 88', homework: 'Minuet bars 1–16, hands together, slowly.' }] },
-    { id: 's-zihan', name: '王子涵', email: alias_(owner, 'zihan'), kind: 'child', lang: 'zh', birth: yearsAgo(14, 120), start: yearsAgo(3, -40), level: '中级 · 奏鸣曲', grp: 'g2', dur: 60, paid: 2, carry: 13, wd: 4,
+        { pieces: [['Minuet in G', 'Petzold BWV Anh. 114', 'new']], focus: 'Hands separately; left-hand fingering 1-2-3 in bars 9–16.', tempo: '♩ = 88', homework: 'Minuet bars 1–16, hands together, slowly.\nFive-finger warm-up, 5 minutes a day.' }] },
+    { id: 's-zihan', name: '王子涵', email: alias_(owner, 'zihan'), kind: 'child', lang: 'zh', birth: yearsAgo(14, 120), start: yearsAgo(3, -40), level: '中级 · 奏鸣曲', grp: 'g2', dur: 60, paid: 2, carry: 13, wd: 4, tz: 'Asia/Shanghai', nextIn: 1,
       avatar: { t: 'emoji', v: '🦁', c: '#D6DDF5' }, books: [{ n: '克莱门蒂小奏鸣曲集', s: 'current' }, { n: '约翰·汤普森 4', s: 'done' }],
       notes: [
         { pieces: [['小奏鸣曲 第一乐章', 'Clementi Op. 36 No. 1', 'new'], ['G 大调音阶 两个八度', '音阶', 'review']], focus: 'Alberti 低音要轻，旋律在右手。', tempo: '♩ = 100', homework: 'Clementi 呈示部，左手单独录一遍。' },
         { pieces: [['小奏鸣曲 第一乐章', 'Clementi Op. 36 No. 1', 'review']], focus: '展开部第 16–23 小节节奏不稳，用节拍器。', tempo: '♩ = 112', homework: 'Clementi 全乐章，节拍器 ♩=104。' },
-        { pieces: [['小奏鸣曲 第一乐章', 'Clementi Op. 36 No. 1', 'done'], ['托卡塔', 'Kabalevsky Op. 39 No. 18', 'new']], focus: 'Clementi 可以收尾了；Kabalevsky 先慢练和弦转换。', tempo: '♩ = 126', homework: 'Kabalevsky 第 1–12 小节。' }] },
-    { id: 's-lucas', name: 'Lucas Chen', email: alias_(owner, 'lucas'), kind: 'child', lang: 'en', birth: yearsAgo(8, 20), start: yearsAgo(2, -20), level: 'Beginner · Faber 2B', grp: 'g1', dur: 30, paid: 1, carry: 8, wd: 6,
+        { pieces: [['小奏鸣曲 第一乐章', 'Clementi Op. 36 No. 1', 'done'], ['托卡塔', 'Kabalevsky Op. 39 No. 18', 'new']], focus: 'Clementi 可以收尾了；Kabalevsky 先慢练和弦转换。', tempo: '♩ = 126', homework: 'Kabalevsky 第 1–12 小节。\nG 大调音阶，节拍器 ♩=80。' }] },
+    { id: 's-lucas', name: 'Lucas Chen', email: alias_(owner, 'lucas'), kind: 'child', lang: 'en', birth: yearsAgo(8, 20), start: yearsAgo(2, -20), level: 'Beginner · Faber 2B', grp: 'g1', dur: 30, paid: 1, carry: 8, wd: 6, tz: 'America/Denver', nextIn: 4,
       avatar: null, books: [{ n: 'Faber 2B', s: 'current' }, { n: 'Faber 2A', s: 'done' }],
       notes: [
         { pieces: [['Gavotte', 'Faber Piano Adventures 2B', 'new']], focus: 'Lift the fingers for staccato; count out loud.', tempo: '♩ = 76', homework: 'Gavotte 3 times a day.' },
         { pieces: [['Gavotte', 'Faber Piano Adventures 2B', 'done'], ['C major scale, 1 octave', 'Scales', 'new']], focus: 'Prepare the thumb-under crossing early.', tempo: '♩ = 84', homework: 'C major scale 5 times each hand.' }] },
-    { id: 's-sophia', name: 'Sophia Zhang', email: alias_(owner, 'sophia'), kind: 'adult', lang: 'en', birth: yearsAgo(31, 200), start: yearsAgo(0, -240), level: 'Intermediate · Romantic', grp: 'g2', dur: 60, paid: 1, carry: 3, wd: 1,
+    { id: 's-sophia', name: 'Sophia Zhang', email: alias_(owner, 'sophia'), kind: 'adult', lang: 'en', birth: yearsAgo(31, 200), start: yearsAgo(0, -240), level: 'Intermediate · Romantic', grp: 'g2', dur: 60, paid: 1, carry: 3, wd: 1, tz: 'America/Chicago', nextIn: 2,
       avatar: { t: 'emoji', v: '🌿', c: '#CFE6D8' }, books: [{ n: 'Chopin Waltzes', s: 'current' }], showPoints: false,
       notes: [
         { pieces: [['Waltz in A minor', 'Chopin B. 150', 'new']], focus: 'Deep left-hand bass, light beats 2 and 3; change the pedal cleanly.', tempo: '♩. = 50', homework: 'Waltz bars 1–16; practice the pedaling on its own.' },
         { pieces: [['Waltz in A minor', 'Chopin B. 150', 'review'], ['Etude No. 1', 'Czerny Op. 849', 'new']], focus: 'Change the tone color when the middle section turns major.', tempo: '♩. = 58', homework: 'Whole waltz; Czerny bars 1–8.' }] },
-    { id: 's-mia', name: 'Mia Chen', email: '', kind: 'child', lang: 'en', birth: yearsAgo(6, 90), start: yearsAgo(0, -35), level: 'Early beginner · Faber 1', grp: 'g0', dur: 30, paid: 1, carry: 0, wd: 6,
+    { id: 's-mia', name: 'Mia Chen', email: '', kind: 'child', lang: 'en', birth: yearsAgo(6, 90), start: yearsAgo(0, -35), level: 'Early beginner · Faber 1', grp: 'g0', dur: 30, paid: 1, carry: 0, wd: 6, tz: 'America/Los_Angeles', nextIn: 5,
       avatar: null, books: [{ n: 'Faber 1', s: 'current' }],
       notes: [
         { pieces: [['Hot Cross Buns', 'Faber 1 · Folk tune', 'new']], focus: 'Hold the hand like a small ball; count 1-2-3-4 while playing.', tempo: '♩ = 72', homework: 'Hot Cross Buns 3 times a day.' },
@@ -128,7 +128,7 @@ function seedFakeData_(owner) {
   cast.forEach(function (c) {
     dbInsert_('Students', { id: c.id, name: c.name, email: c.email, kind: c.kind, birth: c.birth, start: c.start, adj: 0, lang: c.lang,
       level: c.level, grp: c.grp, dur: c.dur, paid: c.paid, carry: c.carry, claimed: false,
-      showPoints: c.showPoints === undefined ? c.kind === 'child' : c.showPoints, avatar: c.avatar, books: c.books, active: true, created: iso_(now - 200 * DAY) });
+      showPoints: c.showPoints === undefined ? c.kind === 'child' : c.showPoints, avatar: c.avatar, books: c.books, active: true, created: iso_(now - 200 * DAY), tz: c.tz });
     // 每周一节，最近一节在 1–3 天前；每个学生错开
     var latestAgo = { 's-emma': 1, 's-zihan': 5, 's-lucas': 3, 's-sophia': 6, 's-mia': 4 }[c.id];
     var count = c.notes.length;
@@ -141,7 +141,12 @@ function seedFakeData_(owner) {
       var n = c.notes[i];
       dbInsert_('Lessons', { id: 'l-' + c.id.slice(2) + '-' + (i + 1), sid: c.id, date: iso_(date), dur: c.dur, status: 'done', confirmedAt: '',
         signedAt: signed ? iso_(date + (3 + i) * HOUR) : '', signedBy: signed ? 'student' : '', loggedAt: iso_(date + HOUR),
-        notes: { pieces: n.pieces.map(function (p) { return { title: p[0], source: p[1], st: p[2] }; }), focus: n.focus, tempo: n.tempo, homework: n.homework, due: '' } });
+        notes: (function () {
+          var nt = { pieces: n.pieces.map(function (p) { return { title: p[0], source: p[1], st: p[2] }; }), focus: n.focus, tempo: n.tempo, homework: n.homework, due: '' };
+          // 最近一节课填了“下次上课”：几天后的整点，学生页会显示“n 天后”
+          if (recent) { var nx = new Date(now + c.nextIn * DAY); nx.setMinutes(0, 0, 0); nt.next = iso_(nx.getTime() + HOUR); }
+          return nt;
+        })(), hwDone: [] });
     }
   });
 
