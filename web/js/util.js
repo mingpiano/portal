@@ -137,3 +137,12 @@ export function daysUntil(v, tz, now = Date.now()) {
   const a = zparts(new Date(v).getTime(), tz), b = zparts(now, tz);
   return Math.round((Date.UTC(a.y, a.m - 1, a.d) - Date.UTC(b.y, b.m - 1, b.d)) / 86400000);
 }
+
+/* ---------- 速度：音符 = 每分钟拍数 ---------- */
+/** 速度可选的音符（和后台 TEMPO_NOTES 一致）。 */
+export const TEMPO_NOTES = ['w', 'h', 'h.', 'q', 'q.', 'e', 'e.', 's'];
+const NOTE_SYM = { q: '♩', 'q.': '♩.', e: '♪', 'e.': '♪.', s: '♬' };
+/** 音符的符号（常见字体里没有的二分、全音符用文字代替）。 */
+export const noteSym = (n, name) => NOTE_SYM[n] || name;
+/** 把 {n, b} 写成 “♩ = 80”；没有速度返回空字符串。name(n) 给出音符的文字名称。 */
+export function tempoText(tp, name) { return tp && tp.b ? `${noteSym(tp.n, name(tp.n))} = ${tp.b}` : ''; }

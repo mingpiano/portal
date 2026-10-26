@@ -392,3 +392,19 @@ main .stack>p.small,main .stack>p.muted{background:color-mix(in srgb,var(--surfa
 .crop-cv:active{cursor:grabbing}
 .crop-zoom input{width:100%}
 .tz-box{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.brand-name{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.brand-name .bn-1{font-family:var(--f-display);font-weight:700;font-size:1.2rem;margin:0}
+h1.bn-1{font-size:1.6rem}
+.brand-name .bn-2{font-family:var(--f-work);font-style:normal;font-size:.78rem;color:var(--ink-2);letter-spacing:.02em}
+
+/* ---- 批次二：多曲目记课 ---- */
+.pieces-form{display:flex;flex-direction:column;gap:12px}
+.prow{border:1px solid var(--line);border-radius:12px;padding:10px 14px 14px;margin:0;min-width:0}
+.prow legend{font-weight:700;padding:0 6px;font-family:var(--f-display)}
+.tempo-in{display:flex;gap:8px;align-items:center}
+.tempo-in select{flex:1 1 auto;min-width:0}
+.tempo-in input{width:6.5em;flex:none}
+.f.check{flex-direction:row;align-items:center;gap:8px}
+.f.check input{width:20px;height:20px;accent-color:var(--accent)}
+.tip{background:var(--accent-soft);border-radius:8px;padding:8px 10px}
+.piece{flex-wrap:wrap}

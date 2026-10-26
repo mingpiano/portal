@@ -16,7 +16,7 @@ const S = {
   screen: 'boot',              // boot | offline | login | app
   token: null, data: null, tab: null, kid: null, msgSel: null, recSid: null,
   showArchived: false, modal: null, avDraft: null, busy: false, lastSync: 0,
-  preview: null, adminData: null, adminLang: null, crop: null,
+  recN: 1, recHw: {}, preview: null, adminData: null, adminLang: null, crop: null,
   fresh: { n: new Set(), m: new Set() }, readTried: new Set(),
   login: { step: 'email', email: '', ticket: null, accounts: [], err: '', busy: false, remember: true, cooldown: 0 }
 };
@@ -61,7 +61,7 @@ function markFresh() {
 }
 
 function offlineView() {
-  return `<div class="login wrap"><div class="card"><h1>${t('app.name')}</h1><p>${t('boot.offline')}</p><div class="btns"><button class="btn primary" data-act="retry">${t('common.retry')}</button></div></div></div>`;
+  return `<div class="login wrap"><div class="card"><h1>${t('app.name')}</h1><p class="small muted">${t('app.sub')}</p><p>${t('boot.offline')}</p><div class="btns"><button class="btn primary" data-act="retry">${t('common.retry')}</button></div></div></div>`;
 }
 
 export function render({ keep = true } = {}) {
@@ -79,7 +79,7 @@ export function render({ keep = true } = {}) {
   $('#app').innerHTML = html;
   const mr = $('#modal-root');
   mr.innerHTML = S.modal && S.screen === 'app' ? `<div class="overlay" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true">${V.MODALS[S.modal.type](S)}</div></div>` : '';
-  document.title = S.screen === 'app' ? (S.data.studio[getLang()] || t('app.name')) : t('app.name');
+  document.title = tx('app.name') + ' · ' + tx('app.sub');
   restore(snap);
   window.scrollTo(0, sy);
   const th = $('#thread'); if (th) th.scrollTop = th.scrollHeight;
@@ -140,7 +140,7 @@ function autoRead() {
 /* ---------- 登录 / 退出 ---------- */
 function sessionEnded(msgKey) {
   store.set(KEY.token, null); store.set(KEY.token, null, true);
-  Object.assign(S, { preview: null, adminData: null, crop: null, token: null, data: null, modal: null, screen: 'login', tab: null, kid: null });
+  Object.assign(S, { recN: 1, recHw: {}, preview: null, adminData: null, crop: null, token: null, data: null, modal: null, screen: 'login', tab: null, kid: null });
   Object.assign(S.login, { step: 'email', err: msgKey || '', busy: false, ticket: null, accounts: [] });
   render({ keep: false });
 }
@@ -245,6 +245,14 @@ function setNext(ms) {
   if (![...$('#rec-nm').options].some(o => +o.value === f.mi)) { const o = new Option(String(f.mi).padStart(2, '0'), String(f.mi)); $('#rec-nm').add(o); $('#rec-nm').value = String(f.mi); }
 }
 
+/** 读速度输入：没填 → null；填错 → false；正常 → {n, b}。 */
+function readTempo(fd, name) {
+  const raw = String(fd.get(name + 'b') || '').trim();
+  if (!raw) return null;
+  const b = Number(raw);
+  return Number.isInteger(b) && b >= 20 && b <= 400 ? { n: fd.get(name + 'n') || 'q', b } : false;
+}
+
 const FORMS = {
   async 'login-email'(f, fd) {
     const email = norm(fd.get('email')); const A = S.login;
@@ -267,8 +275,19 @@ const FORMS = {
     await finishLogin(r.data.token, A.remember);
   },
   async 'rec-save'(f, fd) {
-    const pieces = parsePieces(fd.get('pieces'));
-    if (!pieces.length || pieces.some(p => !p.title)) return toast(tx('err.rec_pieces'));
+    const pieces = [];
+    for (let i = 0; i < S.recN; i++) {
+      const title = String(fd.get(`p${i}title`) || '').trim();
+      if (!title) return toast(tx('err.rec_pieces'));
+      const tempo = readTempo(fd, `p${i}t`); if (tempo === false) return toast(tx('err.bpm'));
+      const hw = fd.get(`p${i}hw`) !== 'no';
+      const pc = { title, source: String(fd.get(`p${i}src`) || '').trim(), tempo, hw };
+      if (hw) {
+        const ht = readTempo(fd, `p${i}h`); if (ht === false) return toast(tx('err.bpm'));
+        Object.assign(pc, { st: fd.get(`p${i}st`) || 'new', hwTempo: ht, video: !!fd.get(`p${i}vid`) });
+      }
+      pieces.push(pc);
+    }
     const tz = S.data.teacherTz;
     const ms = fieldsToMs(fd.get('date'), +fd.get('th'), +fd.get('tm'), fd.get('tap'), tz);
     if (ms == null) return toast(tx('err.bad_time'));
@@ -280,8 +299,8 @@ const FORMS = {
       next = new Date(nms).toISOString();
     }
     const sid = fd.get('sid'); S.recSid = sid;
-    const r = await run('lessons.log', { sid, date: new Date(ms).toISOString(), dur: num(fd.get('dur')), pieces, focus: fd.get('focus'), tempo: fd.get('tempo'), homework: fd.get('homework'), due: fd.get('due') || '', next }, { fresh: true });
-    if (r.ok) toast(tx('rec.saved'));
+    const r = await run('lessons.log', { sid, date: new Date(ms).toISOString(), dur: num(fd.get('dur')), pieces, focus: fd.get('focus'), homework: fd.get('homework'), due: fd.get('due') || '', next }, { fresh: true });
+    if (r.ok) { S.recN = 1; S.recHw = {}; render({ keep: false }); toast(tx('rec.saved')); }
   },
   async 'student-save'(f, fd) {
     const student = { name: fd.get('name'), email: fd.get('email'), kind: fd.get('kind'), lang: fd.get('lang'), birth: fd.get('birth') || '', start: fd.get('start') || '',
@@ -426,6 +445,8 @@ const CHANGE = {
     const r = await run('homework.check', { id: el.dataset.id, idx: Number(el.dataset.idx), on }, { silent: true });
     if (!r.ok) render({ keep: false });
   },
+  'rec-count'(el) { S.recN = Math.min(V.REC_MAX_PIECES, Math.max(1, Number(el.value) || 1)); render(); },
+  'rec-hw'(el) { S.recHw = { ...S.recHw, [el.dataset.i]: el.value }; render(); },
   'rec-student'(el) {
     S.recSid = el.value;
     const s = stuById(el.value), dur = $('#rec-dur');

@@ -53,7 +53,11 @@ var DEFAULT_RULES = { confirm: 2, sign: 1, ontime: 3, late: -1, missing: -3, nos
 var RULE_RANGE = { confirm: [-100, 100], sign: [-100, 100], ontime: [-100, 100], late: [-100, 100], missing: [-100, 100],
   noshow: [-100, 100], streakN: [0, 20], streakBonus: [-100, 100], grace: [0, 30] };
 
-var STUDIO_NAME = 'Ming\'s Piano Studio';  // 中文和英文界面都显示这个名字
+var STUDIO_NAME = 'Keynote Portal';
+/** 速度的音符：whole 全、half 二分、quarter 四分、eighth 八分、sixteenth 十六分，带 . 的是附点。 */
+var TEMPO_NOTES = ['w', 'h', 'h.', 'q', 'q.', 'e', 'e.', 's'];
+var STUDIO_SUB = 'Ming Luo Piano Studio';
+var STUDIO_FULL = 'Keynote Portal · Ming Luo Piano Studio';  // 中文和英文界面都显示这个名字
 var DEFAULT_TZ = 'America/Denver';        // 老师所在时区的默认值（老师可以在“我的资料”里改）
 
 /** 可选时区。网页里的下拉框用同一份（有测试守着）。只接受这里的 ID，不接受任意字符串。 */
@@ -63,8 +67,8 @@ var TZ_LIST = ['America/New_York', 'America/Chicago', 'America/Denver', 'America
   'Asia/Tokyo', 'Asia/Seoul', 'Asia/Singapore', 'Australia/Sydney', 'Pacific/Auckland'];
 
 var DEFAULT_CONFIG = {
-  studio_name_zh: STUDIO_NAME,
-  studio_name_en: STUDIO_NAME,
+  studio_name_zh: STUDIO_FULL,
+  studio_name_en: STUDIO_FULL,
   teacher_tz: DEFAULT_TZ,
   'mail.lessonSign': 'true',      // 记课后给学生（或家长）发一封请签字的邮件
   'mail.teacherOnMessage': 'true', // 学生或家长留言时给老师发邮件提醒

@@ -168,6 +168,30 @@ function hBooksSave_(ctx, p) {
 
 /* ---------- 老师：记课、签字 ---------- */
 
+/**
+ * 一首曲子：曲名、出处、本节课速度（音符+每分钟拍数）、是不是作业。
+ * 是作业：状态为“新曲/巩固”，可带作业速度和“需要录视频”；不是作业：这首记为“学过”。
+ * 老版本的数据没有 hw 字段，原样保留它的状态。
+ */
+function cleanPiece_(x) {
+  if (!x || typeof x !== 'object') fail_('bad_request', 'piece');
+  var out = { title: str_(x.title, LIMITS.piece, { required: true, label: 'piece' }), source: str_(x.source, LIMITS.piece) };
+  var tempo = cleanTempo_(x.tempo); if (tempo) out.tempo = tempo;
+  if (x.hw === undefined || x.hw === null) { out.st = oneOf_(x.st || 'new', ['new', 'review', 'done'], 'piece status'); return out; }
+  out.hw = bool_(x.hw);
+  if (!out.hw) { out.st = 'done'; return out; }
+  out.st = oneOf_(x.st || 'new', ['new', 'review'], 'piece status');
+  var ht = cleanTempo_(x.hwTempo); if (ht) out.hwTempo = ht;
+  if (bool_(x.video)) out.video = true;
+  return out;
+}
+/** 速度 = 音符 + 每分钟拍数。没填返回 null。 */
+function cleanTempo_(v) {
+  if (v === undefined || v === null || v === '' || (typeof v === 'object' && (v.b === '' || v.b == null))) return null;
+  if (typeof v !== 'object') fail_('bad_request', 'tempo');
+  return { n: oneOf_(String(v.n || 'q'), TEMPO_NOTES, 'tempo note'), b: int_(v.b, 20, 400, 'bpm') };
+}
+
 function hLessonLog_(ctx, p) {
   var s = findStudent_(String(p.sid || ''));
   if (!s || !s.active) fail_('not_found');
@@ -176,12 +200,9 @@ function hLessonLog_(ctx, p) {
   if (!isFinite(dateMs) || dateMs > now + 86400000 || dateMs < now - 3 * 365 * 86400000) fail_('bad_request', 'date');
   var dur = int_(p.dur == null || p.dur === '' ? s.dur : p.dur, 10, 180, 'dur');
   if (!Array.isArray(p.pieces) || p.pieces.length < 1 || p.pieces.length > 12) fail_('bad_request', 'pieces');
-  var pieces = p.pieces.map(function (x) {
-    return { title: str_(x.title, LIMITS.piece, { required: true, label: 'piece' }), source: str_(x.source, LIMITS.piece),
-      st: oneOf_(x.st || 'new', ['new', 'review', 'done'], 'piece status') };
-  });
+  var pieces = p.pieces.map(cleanPiece_);
   var homework = str_(p.homework, LIMITS.homework);
-  if (hwItems_(homework).length > LIMITS.hwItems) fail_('too_long', 'homework items');
+  if (hwList_({ pieces: pieces, homework: homework }).length > LIMITS.hwItems) fail_('too_long', 'homework items');
   // 下次上课时间（可不填）：必须在这节课之后、一年之内
   var nextMs = 0;
   if (p.next != null && p.next !== '') {
@@ -236,7 +257,7 @@ function hHomeworkCheck_(ctx, p) {
   if (!l) fail_('forbidden');
   var s = findStudent_(l.sid);
   if (!s || !canAccessStudent_(ctx, s)) fail_('forbidden');
-  var items = hwItems_(l.notes && l.notes.homework);
+  var items = hwList_(l.notes);
   if (typeof p.idx !== 'number') fail_('bad_request', 'idx'); // null 和字符串不当作 0
   var idx = int_(p.idx, 0, Math.max(items.length - 1, 0), 'idx');
   if (!items.length) fail_('bad_request', 'idx');

@@ -101,6 +101,18 @@ function hwItems_(text) {
 }
 
 /**
+ * 一节课的全部作业项：先是标为“作业”的曲子（按曲目顺序），再是文字作业的每一行。
+ * 学生勾选记录的是这个列表里的第几项；课记下来以后不再修改，所以序号是稳定的。
+ */
+function hwList_(notes) {
+  notes = notes || {};
+  var out = [];
+  (notes.pieces || []).forEach(function (p) { if (p.hw === true) out.push({ k: 'p', title: p.title }); });
+  hwItems_(notes.homework).forEach(function (t) { out.push({ k: 't', text: t }); });
+  return out;
+}
+
+/**
  * 下次上课时间：取最近一节课里老师填的“下次上课”，已经过去就不算。
  * 老师是在记课时填的，所以以最新一节课为准。
  */

@@ -33,7 +33,7 @@ function sendMail_(to, mail, kind, logSubject) {
   if (isTestEnv_() && !allowedInTest_(to)) { logMail_(to, subj, kind, 'blocked_test_env'); return false; }
   if (MailApp.getRemainingDailyQuota() < MAIL_QUOTA_FLOOR) { logMail_(to, subj, kind, 'quota_low'); return false; }
   try {
-    MailApp.sendEmail({ to: to, subject: mail.subject, body: mail.text, htmlBody: mail.html, name: mail.from || STUDIO_NAME });
+    MailApp.sendEmail({ to: to, subject: mail.subject, body: mail.text, htmlBody: mail.html, name: mail.from || STUDIO_FULL });
     logMail_(to, subj, kind, 'sent');
     return true;
   } catch (e) {

@@ -60,16 +60,16 @@ const bodyText = page => page.evaluate(() => document.body.innerText);
 const tinyPng = page => page.evaluate(() => { const c = document.createElement('canvas'); c.width = 300; c.height = 200; const g = c.getContext('2d'); g.fillStyle = '#c33'; g.fillRect(0, 0, 300, 200); g.fillStyle = '#39c'; g.fillRect(100, 50, 100, 100); return c.toDataURL('image/png').split(',')[1]; });
 
 describe('第 2 版（批次一）', () => {
-  test('logo 出现在登录页和所有角色的页面；标题改为 Ming\'s Piano Studio（中英文都是）', async () => {
+  test('logo 出现在登录页和所有角色的页面；标题改为 Keynote Portal / Ming Luo Piano Studio（中英文都是）', async () => {
     const page = await newPage();
-    assert.equal(await page.title(), "Ming's Piano Studio");
+    assert.match(await page.title(), /Keynote Portal/);
     assert.ok(await page.$eval('img.login-logo, img.logo', i => i.complete && i.naturalWidth > 0), '登录页 logo 加载成功');
     for (const email of [OWNER, al('emma'), al('chen')]) {
       const p = await newPage(); await login(p, email);
       assert.ok(await p.$eval('.bar img.logo', i => i.complete && i.naturalWidth > 0), email + ' 顶栏有 logo');
-      assert.match(await p.locator('.bar').innerText(), /Ming's Piano Studio/);
+      assert.match(await p.locator('.bar').innerText(), /Keynote Portal[\s\S]*Ming Luo Piano Studio/);
       await p.click('[data-act=lang]');
-      assert.match(await p.locator('.bar').innerText(), /Ming's Piano Studio/);
+      assert.match(await p.locator('.bar').innerText(), /Keynote Portal[\s\S]*Ming Luo Piano Studio/);
       assert.deepEqual(p.errors, []);
     }
   });
@@ -114,17 +114,17 @@ describe('第 2 版（批次一）', () => {
     assert.match(hint, /5:00|下午5/, '丹佛 3 PM = 纽约 5 PM：' + hint);
     await page.fill('#rec-ndate', '2026-11-17');
     await page.selectOption('#rec-nh', '3'); await page.selectOption('#rec-nap', 'PM');
-    await page.fill('#rec-pieces', 'Sonatina | Clementi | 新曲');
+    await page.fill('#rp0-title', 'Sonatina');
     await page.fill('#rec-hw', '第一条\n第二条');
     await page.click('form[data-form=rec-save] button[type=submit]');
     await page.waitForSelector('.lesson');
     assert.deepEqual(page.errors, []);
     // 下次上课早于本次 → 提示且已填内容不丢
     await page.fill('#rec-date', '2026-11-10'); await page.fill('#rec-ndate', '2026-11-01');
-    await page.fill('#rec-pieces', 'X | Y | 新曲');
+    await page.fill('#rp0-title', 'XY');
     await page.click('form[data-form=rec-save] button[type=submit]');
     assert.match(await page.locator('#toast').innerText(), /晚于|之后|after/i);
-    assert.equal(await page.inputValue('#rec-pieces'), 'X | Y | 新曲');
+    assert.equal(await page.inputValue('#rp0-title'), 'XY');
   });
 
   test('头像：选图 → 裁剪 → 保存，顶栏变成照片；坏文件被拒绝', async () => {

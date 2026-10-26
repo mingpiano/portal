@@ -101,7 +101,7 @@ function seedFakeData_(owner) {
         { pieces: [['Arabesque', 'Burgmüller Op. 100 No. 2', 'new']], focus: 'Keep the right-hand triplets in bars 1–8 even; relax the wrist.', tempo: '♩ = 80', homework: 'Arabesque bars 1–8 slowly, 15 minutes a day.' },
         { pieces: [['Arabesque', 'Burgmüller Op. 100 No. 2', 'review'], ['Etude No. 40', 'Czerny Op. 599', 'new']], focus: 'Short left-hand chords; make p and f more contrasted.', tempo: '♩ = 92', homework: 'Play Arabesque all the way through; Czerny hands separately.' },
         { pieces: [['Arabesque', 'Burgmüller Op. 100 No. 2', 'done'], ['Etude No. 40', 'Czerny Op. 599', 'review']], focus: "Don't start the ritardando too early.", tempo: '♩ = 108', homework: 'Czerny with the metronome.' },
-        { pieces: [['Minuet in G', 'Petzold BWV Anh. 114', 'new']], focus: 'Hands separately; left-hand fingering 1-2-3 in bars 9–16.', tempo: '♩ = 88', homework: 'Minuet bars 1–16, hands together, slowly.\nFive-finger warm-up, 5 minutes a day.' }] },
+        { pieces: [['Minuet in G', 'Petzold BWV Anh. 114', 'new', { hw: true, tempo: { n: 'q', b: 72 }, hwTempo: { n: 'q', b: 84 }, video: true }], ['Five-finger warm-up', 'Technique', 'done', { hw: false }]], focus: 'Hands separately; left-hand fingering 1-2-3 in bars 9–16.', tempo: '♩ = 88', homework: 'Minuet bars 1–16, hands together, slowly.\nFive-finger warm-up, 5 minutes a day.' }] },
     { id: 's-zihan', name: '王子涵', email: alias_(owner, 'zihan'), kind: 'child', lang: 'zh', birth: yearsAgo(14, 120), start: yearsAgo(3, -40), level: '中级 · 奏鸣曲', grp: 'g2', dur: 60, paid: 2, carry: 13, wd: 4, tz: 'Asia/Shanghai', nextIn: 1,
       avatar: { t: 'emoji', v: '🦁', c: '#D6DDF5' }, books: [{ n: '克莱门蒂小奏鸣曲集', s: 'current' }, { n: '约翰·汤普森 4', s: 'done' }],
       notes: [
@@ -142,7 +142,7 @@ function seedFakeData_(owner) {
       dbInsert_('Lessons', { id: 'l-' + c.id.slice(2) + '-' + (i + 1), sid: c.id, date: iso_(date), dur: c.dur, status: 'done', confirmedAt: '',
         signedAt: signed ? iso_(date + (3 + i) * HOUR) : '', signedBy: signed ? 'student' : '', loggedAt: iso_(date + HOUR),
         notes: (function () {
-          var nt = { pieces: n.pieces.map(function (p) { return { title: p[0], source: p[1], st: p[2] }; }), focus: n.focus, tempo: n.tempo, homework: n.homework, due: '' };
+          var nt = { pieces: n.pieces.map(function (p) { var o = { title: p[0], source: p[1], st: p[2] }; if (p[3]) for (var k in p[3]) o[k] = p[3][k]; return o; }), focus: n.focus, tempo: n.tempo, homework: n.homework, due: '' };
           // 最近一节课填了“下次上课”：几天后的整点，学生页会显示“n 天后”
           if (recent) { var nx = new Date(now + c.nextIn * DAY); nx.setMinutes(0, 0, 0); nt.next = iso_(nx.getTime() + HOUR); }
           return nt;

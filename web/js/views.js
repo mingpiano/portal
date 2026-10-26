@@ -4,7 +4,7 @@
  * 或者作为 t() 的变量（t 会自动转义变量）。
  */
 import { t, tx, getLang } from './i18n.js';
-import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, AVATAR_EMOJI, AVATAR_COLORS, TZ_LIST, tzName, tzAbbr, fmtClock, fmtDateZ, fmtWhenZ, daysUntil, nowFields, wallFields, fieldsToMs } from './util.js';
+import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, AVATAR_EMOJI, AVATAR_COLORS, TZ_LIST, tzName, tzAbbr, fmtClock, fmtDateZ, fmtWhenZ, daysUntil, nowFields, wallFields, fieldsToMs, TEMPO_NOTES, tempoText, noteSym } from './util.js';
 
 const lg = () => getLang();
 const byId = (arr, id) => arr.find(x => x.id === id);
@@ -16,8 +16,23 @@ export const unreadMsgs = S => S.data.messages.filter(m => m.unread).length;
 /** 作业按行拆成逐项（和后台 hwItems_ 一致）。 */
 export const hwItems = text => String(text || '').split('\n').map(x => x.trim()).filter(Boolean);
 const hwDoneOf = l => new Set((l.hwDone || []).filter(i => Number.isInteger(i)));
+const noteName = n => tx('note.' + n);
+/** 速度写成 “♩ = 80”。 */
+export const tempoStr = tp => tempoText(tp, noteName);
+/** 一节课的全部作业项（和后台 hwList_ 一致）：先是标为作业的曲子，再是文字作业的每一行。 */
+export function hwList(l) {
+  const n = l.notes || {};
+  return [...(n.pieces || []).filter(p => p.hw === true).map(p => ({ k: 'p', title: p.title, tempo: p.hwTempo, video: !!p.video })),
+    ...hwItems(n.homework).map(text => ({ k: 't', text }))];
+}
 /** 一节课的作业：{items, done:Set, open:数量}。 */
-export function hwOf(l) { const items = hwItems((l.notes || {}).homework), done = hwDoneOf(l); return { items, done, open: items.filter((_, i) => !done.has(i)).length }; }
+export function hwOf(l) { const items = hwList(l), done = hwDoneOf(l); return { items, done, open: items.filter((_, i) => !done.has(i)).length }; }
+/** 一个作业项的文字：曲子写“曲名 · 目标速度”，文字作业原样。 */
+function hwLabel(x) {
+  if (x.k === 't') return esc(x.text);
+  const tp = tempoStr(x.tempo);
+  return `${esc(x.title)}${tp ? ` <span class="muted small num">· ${esc(tx('hw.target', { tempo: tp }))}</span>` : ''}${x.video ? ` ${pill('wait', '🎥 ' + tx('hw.video'))}` : ''}`;
+}
 /** 学生（家长看当前孩子）还没勾的作业项数。 */
 export function hwOpenCount(S, sid) { return S.data.lessons.filter(l => (!sid || l.sid === sid) && l.status === 'done').reduce((a, l) => a + hwOf(l).open, 0); }
 const stuTz = (S, sid) => (byId(S.data.students, sid) || {}).tz || S.data.teacherTz || 'America/Denver';
@@ -31,13 +46,14 @@ export function tabsFor(S) {
   return base;
 }
 export const defaultTab = S => (role(S) === 'admin' ? 'overview' : 'home');
+const brandText = tag => `<div class="brand-name"><${tag} class="bn-1">${t('app.name')}</${tag}><span class="bn-2">${t('app.sub')}</span></div>`;
 const logoImg = (size, cls = '') => `<img class="logo ${cls}" src="img/logo.png" width="${size}" height="${Math.round(size * 0.972)}" alt="${esc(tx('app.logoAlt'))}">`;
 const pill = (kind, text) => `<span class="pill ${kind}">${text}</span>`;
 
 /* ---------- 登录 ---------- */
 export function loginView(S) {
   const A = S.login;
-  const head = `<div class="login-h"><div class="login-brand">${logoImg(56, 'login-logo')}<h1 style="font-size:1.6rem">${t('app.name')}</h1></div>${langBtn()}</div>`;
+  const head = `<div class="login-h"><div class="login-brand">${logoImg(56, 'login-logo')}${brandText('h1')}</div>${langBtn()}</div>`;
   const err = A.err ? `<p class="err" role="alert">${t(A.err)}</p>` : '';
   let body;
   if (A.step === 'email') {
@@ -65,7 +81,7 @@ export function loginView(S) {
 }
 
 export function unconfiguredView() {
-  return `<div class="login wrap"><div class="card"><div class="login-brand">${logoImg(48)}<h1>${t('app.name')}</h1></div><p>${t('boot.unconfigured')}</p></div></div>`;
+  return `<div class="login wrap"><div class="card"><div class="login-brand">${logoImg(48)}${brandText('h1')}</div><p>${t('boot.unconfigured')}</p></div></div>`;
 }
 
 const langBtn = () => `<button class="btn sm lang" data-act="lang" aria-label="${esc(tx('app.switchLang'))}">${lg() === 'zh' ? 'EN' : '中文'}</button>`;
@@ -73,7 +89,6 @@ const langBtn = () => `<button class="btn sm lang" data-act="lang" aria-label="$
 /* ---------- 外壳 ---------- */
 export function shell(S, body) {
   const d = S.data, me = d.me, L = lg();
-  const studio = d.studio[L] || d.studio.zh || t('app.name');
   const tabs = tabsFor(S);
   const badge = k => {
     const n = k === 'notices' && me.role !== 'admin' ? unreadNotices(S) : k === 'messages' ? unreadMsgs(S) : k === 'homework' ? hwOpenCount(S, (curKid(S) || {}).id) : 0;
@@ -88,7 +103,7 @@ export function shell(S, body) {
     : `<div class="who">${nameLine}<button class="avbtn" data-act="av-open" aria-label="${esc(tx('av.change'))}">${avatar(me, 32)}</button>${langBtn()}<button class="btn sm" data-act="logout">${t('app.logout')}</button></div>`;
   const pv = S.preview ? `<div class="prev-note" role="note"><div class="wrap">${t('prev.banner', { name: me.name })} <button class="btn sm" data-act="preview-exit">${t('prev.exit')}</button></div></div>` : '';
   return `${pv}<header class="bar"><div class="wrap">
-      <div class="brand">${logoImg(34)}<div class="brand-t"><b>${esc(studio)}</b></div></div>
+      <div class="brand">${logoImg(34)}${brandText('b')}</div>
       ${who}
     </div>
     <div class="wrap"><nav class="tabs" aria-label="${esc(tx('app.pages'))}">${tabs.map(k => `<button class="tab" data-act="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>${t('tab.' + k)}${badge(k)}</button>`).join('')}</nav></div>
@@ -99,7 +114,11 @@ export function shell(S, body) {
 /* ---------- 小部件 ---------- */
 function pieceList(ps) {
   const pl = st => (st === 'done' ? 'ok' : st === 'new' ? 'wait' : 'plain');
-  return `<div class="pieces">${(ps || []).map(p => `<div class="piece"><span class="work">${esc(p.title)}</span><span class="muted small">${esc(p.source)}</span>${pill(pl(p.st), t('piece.' + p.st))}</div>`).join('')}</div>`;
+  return `<div class="pieces">${(ps || []).map(p => {
+    const tp = tempoStr(p.tempo), ht = tempoStr(p.hwTempo);
+    return `<div class="piece"><span class="work">${esc(p.title)}</span><span class="muted small">${esc(p.source)}</span>${pill(pl(p.st), t('piece.' + p.st))}
+      ${tp ? `<span class="small num muted">${esc(tp)}</span>` : ''}${p.hw ? pill('plain', t('piece.hw') + (ht ? ' ' + esc(ht) : '')) : ''}${p.video ? pill('wait', '🎥 ' + t('hw.video')) : ''}</div>`;
+  }).join('')}</div>`;
 }
 
 /** 一节课的上课时间：学生和家长只看学生所在时区；老师看自己的时区，两地不同时再带上学生那边的。 */
@@ -115,7 +134,7 @@ function lessonTimes(S, l) {
 function hwReadonly(l) {
   const h = hwOf(l);
   if (!h.items.length) return '—';
-  return `<ul class="hwlist">${h.items.map((x, i) => `<li class="${h.done.has(i) ? 'done' : ''}"><span aria-hidden="true">${h.done.has(i) ? '✓' : '○'}</span> ${esc(x)}</li>`).join('')}</ul><span class="small muted">${t('hw.progress', { a: h.items.length - h.open, b: h.items.length })}</span>`;
+  return `<ul class="hwlist">${h.items.map((x, i) => `<li class="${h.done.has(i) ? 'done' : ''}"><span aria-hidden="true">${h.done.has(i) ? '✓' : '○'}</span> ${hwLabel(x)}</li>`).join('')}</ul><span class="small muted">${t('hw.progress', { a: h.items.length - h.open, b: h.items.length })}</span>`;
 }
 
 function lessonBlock(S, l, { canSign, withStudent } = {}) {
@@ -130,7 +149,7 @@ function lessonBlock(S, l, { canSign, withStudent } = {}) {
     ${stu ? `<p><b>${esc(stu.name)}</b> <span class="muted small">· ${t('les.minutes', { n: l.dur })}</span></p>` : ''}
     <p class="small muted num">${esc(lessonTimes(S, l))}</p>
     ${pieceList(n.pieces)}
-    <dl class="kv"><dt>${t('les.focus')}</dt><dd>${esc(n.focus)}</dd><dt>${t('les.tempo')}</dt><dd class="work" style="font-style:normal">${esc(n.tempo)}</dd>
+    <dl class="kv"><dt>${t('les.focus')}</dt><dd>${esc(n.focus)}</dd>${n.tempo ? `<dt>${t('les.tempo')}</dt><dd class="work" style="font-style:normal">${esc(n.tempo)}</dd>` : ''}
     <dt>${t('les.homework')}</dt><dd>${hwReadonly(l)}${n.due ? ` <span class="muted small">· ${t('les.due', { d: fmtYMD(n.due, L) })}</span>` : ''}</dd>
     <dt>${t('les.signed')}</dt><dd>${sign}</dd></dl>${del ? `<div class="btns">${del}</div>` : ''}</div></div>`;
 }
@@ -206,7 +225,8 @@ export function homeworkView(S) {
   const card = l => {
     const h = hwOf(l), tz = s.tz, due = (l.notes || {}).due;
     return `<section class="card hw"><div class="card-h"><h3>${t('hw.fromLesson', { n: l.n, d: fmtDateZ(l.date, tz, L) })}</h3>${pill(h.open ? 'wait' : 'ok', t('hw.progress', { a: h.items.length - h.open, b: h.items.length }))}</div>
-      <div class="hwchecks">${h.items.map((x, i) => `<label class="hwitem ${h.done.has(i) ? 'done' : ''}"><input type="checkbox" data-change="hw" data-id="${esc(l.id)}" data-idx="${i}" ${h.done.has(i) ? 'checked' : ''} ${dis}><span>${esc(x)}</span></label>`).join('')}</div>
+      <div class="hwchecks">${h.items.map((x, i) => `<label class="hwitem ${h.done.has(i) ? 'done' : ''}"><input type="checkbox" data-change="hw" data-id="${esc(l.id)}" data-idx="${i}" ${h.done.has(i) ? 'checked' : ''} ${dis}><span>${hwLabel(x)}</span></label>`).join('')}</div>
+      ${h.items.some(x => x.video) ? `<p class="small muted tip">🎥 ${t('hw.videoTip')}</p>` : ''}
       ${due ? `<p class="small muted">${t('les.due', { d: fmtYMD(due, L) })}</p>` : ''}
       ${h.open === 0 ? `<p class="small ok-text">${t('hw.allDone')}</p>` : ''}</section>`;
   };
@@ -464,6 +484,25 @@ export function tzHint(S, sid, ms) {
   if (!st.tz || st.tz === S.data.teacherTz) return tx('rec.sameTz');
   return tx('rec.studentTime', { when: fmtWhenZ(ms, st.tz, L, { weekday: true }), zone: tzAbbr(ms, st.tz) + ' · ' + tzName(st.tz, L) });
 }
+export const REC_MAX_PIECES = 10;
+/** 速度输入：音符下拉 + 每分钟拍数。 */
+function tempoInputs(id, name, label, note, bpm) {
+  return `<div class="f"><span>${label}</span><div class="tempo-in"><select id="${id}-n" name="${name}n" aria-label="${esc(tx('rec.pNote'))}">${TEMPO_NOTES.map(n => `<option value="${n}" ${n === (note || 'q') ? 'selected' : ''}>${esc(noteSym(n, noteName(n)) === noteName(n) ? noteName(n) : noteSym(n, '') + ' ' + noteName(n))}</option>`).join('')}</select><span>=</span><input type="number" id="${id}-b" name="${name}b" inputmode="numeric" placeholder="80" aria-label="${esc(tx('rec.pBpm'))}"></div></div>`;
+}
+/** 记课表单里的一首曲子。 */
+function pieceRow(S, i) {
+  const hw = (S.recHw || {})[i] !== 'no';
+  return `<fieldset class="prow"><legend>${t('rec.pieceN', { n: i + 1 })}</legend>
+    <div class="form">
+      <label class="f full">${t('rec.pTitle')}<input type="text" id="rp${i}-title" name="p${i}title" maxlength="120"></label>
+      <label class="f full">${t('rec.pSource')}<input type="text" id="rp${i}-src" name="p${i}src" maxlength="120"></label>
+      ${tempoInputs(`rp${i}-t`, `p${i}t`, t('rec.pTempo'), 'q')}
+      <label class="f">${t('rec.pHw')}<select id="rp${i}-hw" name="p${i}hw" data-change="rec-hw" data-i="${i}"><option value="yes" ${hw ? 'selected' : ''}>${t('rec.yes')}</option><option value="no" ${hw ? '' : 'selected'}>${t('rec.no')}</option></select></label>
+      ${hw ? `<label class="f">${t('rec.pSt')}<select id="rp${i}-st" name="p${i}st"><option value="new">${t('piece.new')}</option><option value="review">${t('piece.review')}</option></select></label>
+        ${tempoInputs(`rp${i}-h`, `p${i}h`, t('rec.hwTempo'), 'q')}
+        <label class="f check full"><input type="checkbox" id="rp${i}-vid" name="p${i}vid"> ${t('rec.video')}</label>` : `<p class="small muted full">${t('rec.pHwNo')}</p>`}
+    </div></fieldset>`;
+}
 export function recordView(S) {
   const d = S.data, L = lg();
   const act = d.students.filter(s => s.active);
@@ -480,11 +519,11 @@ export function recordView(S) {
     <div class="f full"><span>${t('rec.time')} <span class="muted small">· ${esc(tzAbbr(Date.now(), d.teacherTz))} ${esc(tzName(d.teacherTz, L))}</span></span>
       <div class="tp-row"><input type="date" id="rec-date" name="date" class="rec-tf" value="${esc(f.date)}" aria-label="${esc(tx('rec.date'))}">${timePick('t', f)}</div>
       <p class="small hint" id="rec-hint">${esc(tzHint(S, pick, hintMs))}</p></div>
-    <label class="f full">${t('rec.pieces')}<textarea id="rec-pieces" name="pieces" placeholder="${esc(tx('rec.piecesPh'))}"></textarea></label>
-    <label class="f full">${t('rec.focus')}<input type="text" id="rec-focus" name="focus" maxlength="300"></label>
-    <label class="f">${t('rec.tempo')}<input type="text" id="rec-tempo" name="tempo" maxlength="60" placeholder="♩ = 80"></label>
+    <label class="f">${t('rec.count')}<select id="rec-count" name="count" data-change="rec-count">${Array.from({ length: REC_MAX_PIECES }, (_, i) => `<option value="${i + 1}" ${i + 1 === (S.recN || 1) ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>
     <label class="f">${t('rec.due')}<input type="date" id="rec-due" name="due"></label>
-    <label class="f full">${t('rec.homework')}<textarea id="rec-hw" name="homework" style="min-height:72px" maxlength="800"></textarea><span class="small muted">${t('rec.hwHelp')}</span></label>
+    <div class="full pieces-form">${Array.from({ length: S.recN || 1 }, (_, i) => pieceRow(S, i)).join('')}</div>
+    <label class="f full">${t('rec.focus')}<input type="text" id="rec-focus" name="focus" maxlength="300"></label>
+    <label class="f full">${t('rec.otherHw')}<textarea id="rec-hw" name="homework" style="min-height:72px" maxlength="800"></textarea><span class="small muted">${t('rec.hwHelp')}</span></label>
     <div class="f full"><span>${t('rec.next')}</span>
       <div class="tp-row"><input type="date" id="rec-ndate" name="ndate" class="rec-tf" aria-label="${esc(tx('rec.date'))}">${timePick('n', f)}
         <button class="btn sm" type="button" data-act="rec-next7">${t('rec.next7')}</button><button class="btn sm link" type="button" data-act="rec-next-clear">${t('rec.nextClear')}</button></div>

@@ -121,9 +121,11 @@ describe('老师的日常', () => {
     await login(t, OWNER);
     await tab(t, 'record');
     await t.selectOption('#rec-student', 's-emma');
-    await t.fill('#rec-pieces', 'Sonatina in C | Clementi | 新曲\nC major scale | Scales | review');
+    await t.selectOption('#rec-count', '2');
+    await t.fill('#rp0-title', 'Sonatina in C'); await t.fill('#rp0-src', 'Clementi');
+    await t.fill('#rp1-title', 'C major scale'); await t.selectOption('#rp1-hw', 'no');
     await t.fill('#rec-focus', '手腕放松');
-    await t.fill('#rec-tempo', '♩ = 90');
+    await t.fill('#rp0-t-b', '90');
     await t.fill('#rec-hw', '每天 10 分钟');
     await shot(t, 'teacher-record');
     await t.click('button[type=submit]');
@@ -155,7 +157,7 @@ describe('老师的日常', () => {
     await t.fill('#rec-focus', '这段文字不能丢');
     await t.click('button[type=submit]');
     await t.waitForSelector('#toast.show');
-    assert.match(await t.textContent('#toast'), /至少写一首曲目/);
+    assert.match(await t.textContent('#toast'), /曲名/);
     assert.equal(await t.inputValue('#rec-focus'), '这段文字不能丢');
   });
 
