@@ -53,7 +53,7 @@ var DEFAULT_RULES = { confirm: 2, sign: 1, ontime: 3, late: -1, missing: -3, nos
 var RULE_RANGE = { confirm: [-100, 100], sign: [-100, 100], ontime: [-100, 100], late: [-100, 100], missing: [-100, 100],
   noshow: [-100, 100], streakN: [0, 20], streakBonus: [-100, 100], grace: [0, 30] };
 
-var STUDIO_NAME = 'Ming’s Piano Studio';  // 中文和英文界面都显示这个名字
+var STUDIO_NAME = 'Ming\'s Piano Studio';  // 中文和英文界面都显示这个名字
 var DEFAULT_TZ = 'America/Denver';        // 老师所在时区的默认值（老师可以在“我的资料”里改）
 
 /** 可选时区。网页里的下拉框用同一份（有测试守着）。只接受这里的 ID，不接受任意字符串。 */

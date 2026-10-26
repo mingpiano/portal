@@ -6,12 +6,12 @@ const { assert, OWNER, HOUR, DAY, fresh, WHO, ok, err, state, lessonParams } = r
 const JPEG = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
 
 describe('名称与头像', () => {
-  test('中文和英文界面看到的工作室名字相同：Ming’s Piano Studio', () => {
+  test('中文和英文界面看到的工作室名字相同：Ming\'s Piano Studio', () => {
     const rt = fresh();
     for (const who of ['admin', 'emma', 'li']) {
       const s = state(rt, who);
-      assert.equal(s.studio.zh, 'Ming’s Piano Studio');
-      assert.equal(s.studio.en, 'Ming’s Piano Studio');
+      assert.equal(s.studio.zh, "Ming's Piano Studio");
+      assert.equal(s.studio.en, "Ming's Piano Studio");
     }
   });
 

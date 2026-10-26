@@ -5,8 +5,8 @@
  */
 const ROWS = [
   /* 应用 */
-  ['app.name', 'Ming’s Piano Studio', 'Ming’s Piano Studio'],
-  ['app.logoAlt', 'Ming’s Piano Studio 标志', 'Ming’s Piano Studio logo'],
+  ['app.name', 'Ming\'s Piano Studio', 'Ming\'s Piano Studio'],
+  ['app.logoAlt', 'Ming\'s Piano Studio 标志', 'Ming\'s Piano Studio logo'],
   ['app.logout', '退出登录', 'Sign out'],
   ['app.pages', '页面', 'Pages'],
   ['app.switchLang', '切换语言 / Switch language', 'Switch language / 切换语言'],

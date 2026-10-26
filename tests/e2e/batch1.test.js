@@ -60,16 +60,16 @@ const bodyText = page => page.evaluate(() => document.body.innerText);
 const tinyPng = page => page.evaluate(() => { const c = document.createElement('canvas'); c.width = 300; c.height = 200; const g = c.getContext('2d'); g.fillStyle = '#c33'; g.fillRect(0, 0, 300, 200); g.fillStyle = '#39c'; g.fillRect(100, 50, 100, 100); return c.toDataURL('image/png').split(',')[1]; });
 
 describe('第 2 版（批次一）', () => {
-  test('logo 出现在登录页和所有角色的页面；标题改为 Ming’s Piano Studio（中英文都是）', async () => {
+  test('logo 出现在登录页和所有角色的页面；标题改为 Ming\'s Piano Studio（中英文都是）', async () => {
     const page = await newPage();
-    assert.equal(await page.title(), 'Ming’s Piano Studio');
+    assert.equal(await page.title(), "Ming's Piano Studio");
     assert.ok(await page.$eval('img.login-logo, img.logo', i => i.complete && i.naturalWidth > 0), '登录页 logo 加载成功');
     for (const email of [OWNER, al('emma'), al('chen')]) {
       const p = await newPage(); await login(p, email);
       assert.ok(await p.$eval('.bar img.logo', i => i.complete && i.naturalWidth > 0), email + ' 顶栏有 logo');
-      assert.match(await p.locator('.bar').innerText(), /Ming’s Piano Studio/);
+      assert.match(await p.locator('.bar').innerText(), /Ming's Piano Studio/);
       await p.click('[data-act=lang]');
-      assert.match(await p.locator('.bar').innerText(), /Ming’s Piano Studio/);
+      assert.match(await p.locator('.bar').innerText(), /Ming's Piano Studio/);
       assert.deepEqual(p.errors, []);
     }
   });
