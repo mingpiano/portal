@@ -1,5 +1,5 @@
 // 部署时只需要改这一行：把 Apps Script 部署后得到的网址（以 /exec 结尾）贴在这里。
-export const API_URL = 'https://script.google.com/macros/s/AKfycbyxYOBJRIdYzAtM0qu7ErtqV-0wOy7QPy5EffW8btZZNy9gdsoVKgwHyEW45OUybTAN/exec';
+export const API_URL = 'https://script.google.com/macros/s/AKfycbzJtH_O_dgZLr5_7GtLzD0k9pTbnW5O3x3pgG5ixaOABxOXs-4NqTPQKLbo7V-cjlHh/exec';
 
 // 本机预览（localhost）默认连本机的模拟后端 /api；
 // 想让本机网页连真正的 Apps Script，打开 http://localhost:8080/?api=<网址>。
