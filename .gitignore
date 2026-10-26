@@ -1,0 +1,7 @@
+node_modules/
+.clasp.json
+.clasp.*.json
+!.clasp.example.json
+.DS_Store
+*.log
+test-results/

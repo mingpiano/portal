@@ -1,0 +1,1852 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>琴房课程系统</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=Spectral:ital,wght@0,500;0,600;1,400;1,500&display=swap">
+<style>
+/* Layout: sticky studio bar → role-based tab row → one content column (max 1080px) with two-column panels that stack under 780px */
+:root{
+  --bg:#F1F2F5; --surface:#FFFFFF; --surface-2:#E8EAF0; --ink:#18202F; --ink-2:#565E71; --line:#D7DAE3;
+  --accent:#84622A; --accent-ink:#FFFFFF; --accent-soft:#F3EADA;
+  --pos:#2A64A3; --pos-soft:#E1ECF8; --neg:#B4521C; --neg-soft:#F8E6DA;
+  --key-white:#FFFFFF; --key-black:#1C2333; --key-on:#D3AE68; --video-bg:#0B0E14;
+  --shadow:0 1px 2px rgba(20,28,45,.05),0 6px 18px rgba(20,28,45,.06);
+  --f-display:"Noto Serif SC","Songti SC","STSong",serif;
+  --f-work:"Spectral","Noto Serif SC",Georgia,serif;
+  --f-body:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11141B; --surface:#191E28; --surface-2:#232A37; --ink:#E8EBF1; --ink-2:#9CA4B6; --line:#2E3646;
+  --accent:#D6AD62; --accent-ink:#1A1408; --accent-soft:#352C1B;
+  --pos:#80B3EA; --pos-soft:#1B2A3D; --neg:#EC9A6A; --neg-soft:#3A2517;
+  --key-white:#D9DCE4; --key-black:#0A0D13; --key-on:#D6AD62; --video-bg:#05070A;
+  --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#11141B; --surface:#191E28; --surface-2:#232A37; --ink:#E8EBF1; --ink-2:#9CA4B6; --line:#2E3646;
+  --accent:#D6AD62; --accent-ink:#1A1408; --accent-soft:#352C1B;
+  --pos:#80B3EA; --pos-soft:#1B2A3D; --neg:#EC9A6A; --neg-soft:#3A2517;
+  --key-white:#D9DCE4; --key-black:#0A0D13; --key-on:#D6AD62; --video-bg:#05070A;
+  --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;line-height:1.3;margin:0;text-wrap:balance}
+h2{font-size:1.25rem} h3{font-size:1.02rem}
+p{margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-2)}
+.small{font-size:.85rem}
+.work{font-family:var(--f-work);font-style:italic;font-weight:500}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;align-items:center;gap:12px;padding-block:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand b{font-family:var(--f-display);font-size:1.25rem}
+.brand span{font-family:var(--f-work);font-style:italic;color:var(--ink-2)}
+.who{display:flex;align-items:center;gap:8px;font-size:.9rem;flex-wrap:wrap}
+.who select{width:auto;padding:4px 8px;font-size:.85rem}
+.lang{min-width:52px;justify-content:center;font-family:var(--f-body);letter-spacing:.04em}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-block:6px 0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:none;padding:8px 12px 10px;border-bottom:2px solid transparent;color:var(--ink-2);cursor:pointer;white-space:nowrap;font-weight:500}
+.tab[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.demo-note{background:var(--accent-soft);color:var(--ink);font-size:.82rem}
+.demo-note .wrap{padding-block:6px}
+
+main{padding-block:22px 64px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.grid-side{display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start}
+@media (max-width:780px){.grid2,.grid-side{grid-template-columns:1fr}}
+.grid2>*,.grid-side>*{min-width:0}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;min-width:0}
+.card-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.page-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.page-h h1{font-size:1.6rem}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stat b{display:block;font-size:1.7rem;font-family:var(--f-work);font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{font-size:.82rem;color:var(--ink-2)}
+.stat.flag b{color:var(--neg)}
+
+.rows{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.row:first-child{border-top:0}
+.row .grow{flex:1;min-width:150px}
+.when{min-width:96px;font-variant-numeric:tabular-nums}
+.when b{display:block;font-size:.95rem}
+.when span{font-size:.8rem;color:var(--ink-2)}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:.78rem;padding:2px 8px;border-radius:99px;white-space:nowrap;border:1px solid transparent;font-weight:500}
+.pill.ok{background:var(--pos-soft);color:var(--pos)}
+.pill.bad{background:var(--neg-soft);color:var(--neg)}
+.pill.wait{background:var(--accent-soft);color:var(--accent)}
+.pill.plain{background:var(--surface-2);color:var(--ink-2)}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:7px;cursor:pointer;font-weight:500;font-size:.9rem;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.sm{padding:4px 10px;font-size:.82rem}
+.btn.link{border:0;background:none;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.av{width:34px;height:34px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-weight:700;font-size:.85rem;flex:none;color:var(--ink)}
+.pts{font-variant-numeric:tabular-nums;font-weight:700}
+.pts.pos{color:var(--pos)} .pts.neg{color:var(--neg)}
+
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:8px 6px;border-top:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--ink-2);font-size:.8rem;border-top:0}
+td.r,th.r{text-align:right}
+.tbl{overflow-x:auto}
+
+/* keyboard */
+.kb{width:100%;max-width:300px;height:auto;display:block}
+.kb .wk{fill:var(--key-white);stroke:var(--line);stroke-width:1}
+.kb .wk.on{fill:var(--key-on)}
+.kb .bk{fill:var(--key-black)}
+.kb .kn{fill:var(--ink-2);font-size:9px;text-anchor:middle;font-family:var(--f-body)}
+.kb .kn.on{fill:#1C2333}
+
+/* lesson record */
+.lesson{display:grid;grid-template-columns:88px 1fr;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.lesson:first-child{border-top:0}
+.lesson .no{font-family:var(--f-work);font-size:1.6rem;font-weight:600;line-height:1;color:var(--accent)}
+.lesson .no small{display:block;font-family:var(--f-body);font-size:.75rem;color:var(--ink-2);margin-top:6px;font-weight:400}
+.lesson>div{min-width:0}
+.pieces{display:flex;flex-direction:column;gap:4px;margin:4px 0 8px}
+.piece{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.9rem}
+.kv dt{color:var(--ink-2)} .kv dd{margin:0}
+.mt{font-size:.72rem;color:var(--ink-2);border:1px solid var(--line);border-radius:4px;padding:0 6px;white-space:nowrap}
+
+/* next lesson hero */
+.next{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.date-block{border:1px solid var(--line);border-radius:10px;padding:10px 14px;text-align:center;min-width:88px;background:var(--bg)}
+.date-block .m{font-size:.8rem;color:var(--ink-2)}
+.date-block .d{font-family:var(--f-work);font-size:2.2rem;font-weight:600;line-height:1.1}
+.date-block .w{font-size:.82rem}
+
+/* portfolio */
+.pf{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.pf .card{padding:0;overflow:hidden;gap:0}
+.thumb{aspect-ratio:16/10;background:var(--surface-2);position:relative;max-width:100%}
+.thumb svg{width:100%;height:100%;display:block}
+.thumb .staff line{stroke:var(--line);stroke-width:1.2}
+.thumb .staff .nh{fill:var(--ink-2)}
+.thumb .play{position:absolute;right:10px;bottom:10px;background:var(--surface);border-radius:99px;padding:2px 10px;font-size:.78rem}
+.thumb video{width:100%;height:100%;object-fit:cover;display:block;background:var(--video-bg)}
+.pf .meta{padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+
+/* forms */
+.form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form .full{grid-column:1/-1}
+@media (max-width:560px){.form{grid-template-columns:1fr}}
+label.f,.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--ink-2);min-width:0}
+input[type=text],input[type=email],input[type=number],input[type=date],input[type=time],input[type=datetime-local],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;color:var(--ink);width:100%;min-width:0}
+textarea{min-height:84px;resize:vertical;line-height:1.5}
+input[type=number]{width:76px;text-align:right}
+
+.rule{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.rule:first-child{border-top:0}
+
+/* steps */
+.steps{display:flex;flex-direction:column;gap:0;counter-reset:s}
+.step{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:10px 0;position:relative}
+.step::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:.85rem;font-family:var(--f-work)}
+.step::after{content:"";position:absolute;left:12.5px;top:40px;bottom:-6px;width:1px;background:var(--line)}
+.step:last-child::after{display:none}
+.step b{display:block}
+
+/* email mock */
+.mail{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.mail-h{background:var(--surface-2);padding:10px 14px;font-size:.82rem;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+.mail-h span{color:var(--ink-2)}
+.mail-h b{min-width:0;overflow-wrap:anywhere}
+.mail-b{padding:16px;display:flex;flex-direction:column;gap:10px;font-size:.92rem}
+pre.ics{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:.78rem;overflow-x:auto;margin:0;line-height:1.45}
+
+/* login */
+.login{min-height:100%;display:grid;place-items:center;padding-block:40px}
+.login .card{max-width:460px;width:100%;gap:16px}
+.login-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.pick{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer}
+.pick:hover{border-color:var(--accent)}
+.pick .grow{flex:1;min-width:0}
+.code-input{font-family:var(--f-work);font-size:1.7rem;font-weight:600;letter-spacing:.45em;text-align:center;padding:10px 6px 10px calc(6px + .45em)!important;font-variant-numeric:tabular-nums}
+.code-show{font-family:var(--f-work);font-size:1.7rem;font-weight:600;letter-spacing:.3em;font-variant-numeric:tabular-nums}
+.check{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--ink)}
+.check input{width:16px;height:16px;accent-color:var(--accent)}
+.err{color:var(--neg);font-size:.85rem}
+.divider{display:flex;align-items:center;gap:10px;font-size:.78rem;color:var(--ink-2);letter-spacing:.04em}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* modal + toast */
+.overlay{position:fixed;inset:0;background:rgba(10,14,22,.45);z-index:20;display:grid;place-items:center;padding:20px max(16px,env(safe-area-inset-right,0px)) 20px max(16px,env(safe-area-inset-left,0px))}
+.modal{background:var(--surface);border-radius:12px;max-width:640px;width:100%;max-height:calc(100% - 20px);overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;border:1px solid var(--line)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.9rem;z-index:30;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 12px;cursor:pointer;font-size:.85rem;color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.callout{background:var(--accent-soft);border-radius:8px;padding:12px 14px;font-size:.9rem}
+.big-pts{font-family:var(--f-work);font-size:2.6rem;font-weight:600;line-height:1}
+
+/* accompaniment library */
+.trk{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.trk:first-child{border-top:0}
+.trk>div{min-width:0}
+.playbtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer;color:var(--accent);flex:none;padding:0}
+.playbtn:hover{border-color:var(--accent)}
+.playbtn svg{width:12px;height:12px;fill:currentColor}
+[data-act="play"] .ic-stop{display:none}
+[data-act="play"][aria-pressed="true"] .ic-stop{display:block}
+[data-act="play"][aria-pressed="true"] .ic-play{display:none}
+.playbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.acc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.acc-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:2px 10px 2px 3px;font-size:.8rem;background:var(--bg);cursor:pointer;color:var(--ink)}
+.acc-chip:hover{border-color:var(--accent)}
+.acc-chip .dot{width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.acc-chip .dot svg{width:8px;height:8px;fill:currentColor}
+.acc-chip[aria-pressed="true"] .dot{background:var(--accent);color:var(--accent-ink)}
+.matrix th,.matrix td{text-align:center;white-space:nowrap}
+.matrix th:first-child,.matrix td:first-child{text-align:left}
+.mx-on{color:var(--pos);font-weight:700}
+.mx-hw{color:var(--accent);font-size:.8rem}
+.mx-off{color:var(--ink-2)}
+.picklist{display:flex;flex-direction:column;max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:7px;padding:4px 10px 8px;background:var(--bg)}
+.picklist label{display:flex;gap:8px;align-items:center;font-size:.88rem;color:var(--ink);padding:3px 0;cursor:pointer}
+.picklist input{accent-color:var(--accent)}
+.picklist .grp{font-size:.75rem;color:var(--ink-2);margin-top:8px;letter-spacing:.04em}
+.col-pick{flex-direction:column;align-items:flex-start;gap:2px}
+.col-pick .small{line-height:1.4}
+.path{font-size:.8rem;color:var(--ink-2)}
+.path b{color:var(--ink);font-weight:500}
+.opt-row{display:flex;flex-direction:column;gap:8px}
+.opt-row>span{font-size:.85rem;color:var(--ink-2)}
+
+/* video submission */
+.up-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.up-opts{grid-template-columns:1fr}}
+.up-opt{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg);min-width:0}
+.up-opt .ic{width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.up-opt .ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.up-opt label.btn{align-self:flex-start}
+.preview video{width:100%;max-height:320px;background:var(--video-bg);border-radius:8px;display:block}
+.prog{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.prog>i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s linear}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--neg);display:inline-block;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.tips{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:2px}
+@media (prefers-reduced-motion:reduce){#toast,.prog>i{transition:none}.rec-dot{animation:none}}
+
+/* ===== v4：背景主题、头像、通知、日历、资源、庆祝 ===== */
+#bg{position:fixed;inset:0;z-index:-1;background:var(--bg);overflow:hidden}
+#bg::before{content:"";position:absolute;inset:0;background-image:var(--tile);background-repeat:repeat;opacity:.13;filter:saturate(.6)}
+#bg[data-kid="1"]::before{opacity:.9;filter:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #bg::after{content:"";position:absolute;inset:0;background:rgba(12,15,22,.68)}}
+:root[data-theme="dark"] #bg::after{content:"";position:absolute;inset:0;background:rgba(12,15,22,.68)}
+.page-h{background:color-mix(in srgb,var(--surface) 84%,transparent);padding:10px 16px;border-radius:12px;border:1px solid var(--line)}
+main .stack>p.small,main .stack>p.muted{background:color-mix(in srgb,var(--surface) 84%,transparent);padding:8px 12px;border-radius:10px}
+.fest{display:flex;gap:10px;align-items:center;padding:10px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-family:var(--f-display);font-size:1.05rem}
+.fest-ic{font-size:1.5rem;line-height:1}
+
+.av{overflow:hidden;line-height:1}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.avbtn{border:2px solid var(--line);border-radius:50%;padding:0;background:none;cursor:pointer;display:inline-flex}
+.avbtn:hover{border-color:var(--accent)}
+.logo{height:34px;width:auto;max-width:150px;display:block;object-fit:contain}
+.logo-ph{display:inline-flex;align-items:center;gap:8px}
+.logo-ph svg{width:34px;height:34px;flex:none}
+.brand{align-items:center}
+.brand-t{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--neg);color:var(--accent-ink);font-size:.7rem;margin-left:6px;font-variant-numeric:tabular-nums;font-weight:700}
+.demo-note .wrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.demo-note select{width:auto;padding:2px 8px;font-size:.8rem}
+.viewing{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kid-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:3px 12px 3px 3px;cursor:pointer;font-size:.88rem;color:var(--ink)}
+.kid-chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+
+/* 庆祝 */
+.celeb{position:relative;overflow:hidden;border-radius:12px;min-height:300px;display:grid;place-items:center;text-align:center;padding:28px 16px;background:linear-gradient(160deg,var(--accent-soft),var(--surface-2))}
+.celeb-main{position:relative;z-index:1;display:flex;flex-direction:column;gap:10px;align-items:center}
+.celeb-emo{font-size:4.2rem;line-height:1.1;animation:bounce 1.1s ease-in-out infinite}
+.celeb-t{font-size:1.7rem}
+.celeb-t span{display:inline-block;white-space:pre;animation:wave 1.6s ease-in-out infinite}
+.celeb-row{display:flex;gap:14px;font-size:2rem}
+.celeb-row span{display:inline-block;animation:bounce 1.4s ease-in-out infinite}
+.cf{position:absolute;top:-16px;width:8px;height:14px;border-radius:2px;opacity:.9;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(440px) rotate(540deg)}}
+@keyframes bounce{50%{transform:translateY(-12px)}}
+@keyframes wave{50%{transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.celeb *,.cf{animation:none!important}}
+.celeb-card{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.celeb-card .grow{flex:1;min-width:160px}
+
+/* 头像选择 */
+.av-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media (max-width:420px){.av-grid{grid-template-columns:repeat(4,1fr)}}
+.av-opt{font-size:1.6rem;line-height:1;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:8px 0;cursor:pointer}
+.av-opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{border-color:var(--ink)}
+
+/* 通知、留言 */
+.notice{display:flex;flex-direction:column;gap:6px}
+.notice-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.notice-h h3{flex:1;min-width:160px}
+.thread{display:flex;flex-direction:column;gap:10px;max-height:420px;overflow:auto;padding:4px}
+.bub{max-width:82%;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.bub.me{align-self:flex-end;background:var(--accent-soft);border-color:transparent}
+.bub .who-l{font-size:.75rem;color:var(--ink-2)}
+.bub.fresh{outline:2px solid var(--accent)}
+.unread-dot{width:8px;height:8px;border-radius:50%;background:var(--neg);display:inline-block}
+
+/* 日历 */
+.cal-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.cal{display:grid;grid-template-columns:48px repeat(7,minmax(96px,1fr));min-width:780px}
+.cal-hd{padding:8px 6px;text-align:center;font-size:.82rem;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.cal-hd.today{background:var(--accent-soft);font-weight:700}
+.cal-col{position:relative;border-left:1px solid var(--line)}
+.cal-times{position:relative}
+.cal-times span{position:absolute;right:6px;font-size:.7rem;color:var(--ink-2);transform:translateY(-50%);font-variant-numeric:tabular-nums}
+.ev{position:absolute;left:3px;right:3px;border-radius:6px;border:1px solid var(--c);background:color-mix(in srgb,var(--c) 16%,var(--surface));padding:1px 6px;font-size:.74rem;line-height:1.25;text-align:left;overflow:hidden;cursor:pointer;color:var(--ink)}
+.ev:hover{background:color-mix(in srgb,var(--c) 30%,var(--surface))}
+.ev.done{opacity:.55}
+.ev.proj{border-style:dashed;background:transparent}
+.ev b{font-weight:700}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.82rem;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;background:var(--c)}
+.cal-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* 资源、在线填写 */
+.res{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.res:first-child{border-top:0}
+.res .grow{flex:1;min-width:180px}
+.res-ic{width:40px;height:40px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.res-ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sheet{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.sheet svg{width:100%;height:auto;display:block;cursor:crosshair}
+.sheet line{stroke:#222;stroke-width:1}
+.sheet ellipse{fill:#222}
+.sheet .stem{stroke:#222;stroke-width:1.6}
+
+/* 家长页、学习页 */
+.kidcard .head{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.kidcard .head .grow{flex:1;min-width:160px}
+.pay{background:var(--neg-soft);color:var(--ink);border-radius:8px;padding:12px 14px;font-size:.9rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pay .grow{flex:1;min-width:180px}
+.pbook{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:3px 10px;background:var(--bg);font-size:.88rem}
+.plist{display:flex;flex-direction:column}
+.prow{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line)}
+.prow:first-child{border-top:0}
+.prow .grow{flex:1;min-width:160px}
+.kv2{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.9rem}
+.kv2 dt{color:var(--ink-2)} .kv2 dd{margin:0}
+.chk{display:flex;flex-direction:column;gap:6px;background:var(--accent-soft);border-radius:8px;padding:10px 12px}
+</style>
+
+<div id="bg" aria-hidden="true"></div>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+/* ---------- 语言 ---------- */
+let LANG='zh';
+try{const v=localStorage.getItem('piano-studio-lang');if(v==='en'||v==='zh')LANG=v}catch(_){}
+const L=(zh,en)=>LANG==='en'?en:zh;
+const LL=(lg,zh,en)=>lg==='en'?en:zh;
+
+const DAY=864e5, HOUR=36e5;
+const now=new Date();
+const WD_ZH=['周日','周一','周二','周三','周四','周五','周六'],WD_EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const pad=n=>String(n).padStart(2,'0');
+const fmtD=(d,lg=LANG)=>{d=new Date(d);return lg==='en'?`${WD_EN[d.getDay()]}, ${MON_EN[d.getMonth()]} ${d.getDate()}`:`${d.getMonth()+1}月${d.getDate()}日 ${WD_ZH[d.getDay()]}`};
+const fmtT=d=>{d=new Date(d);return `${pad(d.getHours())}:${pad(d.getMinutes())}`};
+const fmtDT=(d,lg=LANG)=>fmtD(d,lg)+' '+fmtT(d);
+const sod=d=>{d=new Date(d);d.setHours(0,0,0,0);return +d};
+const days=n=>L(`${n} 天`,n===1?'1 day':`${n} days`);
+const rel=d=>{const x=Math.round((sod(d)-sod(now))/DAY);
+  if(x===0)return L('今天','today');if(x===1)return L('明天','tomorrow');if(x===-1)return L('昨天','yesterday');
+  return x>0?L(`${x} 天后`,`in ${days(x)}`):L(`${-x} 天前`,`${days(-x)} ago`)};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const signed=n=>(n>0?'+':n<0?'−':'')+Math.abs(n);
+const mb=b=>b>=1e9?(b/1e9).toFixed(2)+' GB':Math.max(0.1,b/1e6).toFixed(b<1e7?1:0)+' MB';
+/* 文字可以是 [中文, English]：曲名按界面语言显示；老师写的内容在英文界面里显示自动翻译 */
+const tx=v=>Array.isArray(v)?(LANG==='en'&&!state.showOrig?v[1]:v[0]):v;
+const nm=v=>Array.isArray(v)?L(v[0],v[1]):v;
+const teacherEmail=()=>L('你的 Gmail 地址','your Gmail address');
+
+/* ---------- 示例数据 ---------- */
+const STUDENT_CFG=[
+ {id:'emma',name:'Emma Li',email:'lifamily@example.com',contact:['家长：李女士','Parent: Ms. Li'],cal:'apple',lang:'en',level:['初级 · 小汤 3','Beginner · Thompson 3'],group:'g1',wd:2,h:16,m:0,dur:45,done:20,paid:2,pre:false,
+  notes:[
+   {p:[['Arabesque','Burgmüller Op. 100 No. 2','new']],f:['右手第 1–8 小节的三连音要均匀，手腕放松','Keep the right-hand triplets in bars 1–8 even; relax the wrist'],t:'♩ = 80',hw:['Arabesque 慢练第 1–8 小节，每天 15 分钟，录一遍','Arabesque bars 1–8 slowly, 15 minutes a day; record once']},
+   {p:[['Arabesque','Burgmüller Op. 100 No. 2','review'],[['练习曲 No. 40','Etude No. 40'],'Czerny Op. 599','new']],f:['左手和弦断奏要短；p 和 f 的对比再明显一些','Keep the left-hand broken chords short; make p and f more contrasted'],t:'♩ = 92',hw:['Arabesque 全曲连起来；Czerny 分手练','Play Arabesque all the way through; Czerny hands separately']},
+   {p:[['Arabesque','Burgmüller Op. 100 No. 2','done'],[['练习曲 No. 40','Etude No. 40'],'Czerny Op. 599','review']],f:['结尾渐慢不要太早；整体速度稳定','Don\'t start the ritardando too early; keep the tempo steady'],t:'♩ = 108',hw:['录一遍 Arabesque 完整演奏','Record a full performance of Arabesque']},
+   {p:[[['小步舞曲','Minuet in G'],'Petzold BWV Anh. 114','new']],f:['两手分开练；第 9–16 小节左手指法 1-2-3','Practice hands separately; left-hand fingering 1-2-3 in bars 9–16'],t:'♩ = 88',hw:['小步舞曲第 1–16 小节，合手慢练','Minuet bars 1–16, hands together, slowly']}
+  ]},
+ {id:'zihan',name:'王子涵',email:'zihan.wang@example.com',contact:['本人','Student'],cal:'google',lang:'zh',level:['中级 · 奏鸣曲','Intermediate · Sonatinas'],group:'g2',wd:4,h:17,m:30,dur:60,done:16,paid:2,pre:false,
+  notes:[
+   {p:[[['小奏鸣曲 第一乐章','Sonatina, 1st mvt.'],'Clementi Op. 36 No. 1','new'],[['G 大调音阶 两个八度','G major scale, 2 octaves'],['音阶','Scales'],'review']],f:['Alberti 低音要轻，旋律在右手','Keep the Alberti bass light; the melody is in the right hand'],t:'♩ = 100',hw:['Clementi 呈示部，左手单独录一遍','Clementi exposition; record the left hand alone']},
+   {p:[[['小奏鸣曲 第一乐章','Sonatina, 1st mvt.'],'Clementi Op. 36 No. 1','review'],['Hanon No. 1–5','Hanon','review']],f:['展开部第 16–23 小节节奏不稳，用节拍器','Rhythm wobbles in the development, bars 16–23; use the metronome'],t:'♩ = 112',hw:['Clementi 全乐章，节拍器 ♩=104','Whole Clementi movement with metronome at ♩=104']},
+   {p:[[['小奏鸣曲 第一乐章','Sonatina, 1st mvt.'],'Clementi Op. 36 No. 1','done'],[['托卡塔','Toccata'],'Kabalevsky Op. 39 No. 18','new']],f:['Clementi 可以收尾了；Kabalevsky 先慢练和弦转换','Clementi is ready to wrap up; practice the Kabalevsky chord changes slowly first'],t:'♩ = 126',hw:['录 Clementi 完整演奏；Kabalevsky 第 1–12 小节','Record a full Clementi performance; Kabalevsky bars 1–12']}
+  ]},
+ {id:'lucas',name:'Lucas Chen',email:'chen.family@example.com',contact:['家长：陈先生','Parent: Mr. Chen'],cal:'google',lang:'en',level:['初级 · Faber 2B','Beginner · Faber 2B'],group:'g1',wd:6,h:10,m:0,dur:30,done:13,paid:2,pre:true,
+  notes:[
+   {p:[['Gavotte','Faber Piano Adventures 2B','new']],f:['跳音手指要提起来；数拍子出声','Lift the fingers for staccato; count out loud'],t:'♩ = 76',hw:['Gavotte 每天 3 遍，第 2 遍录下来','Gavotte 3 times a day; record the second time']},
+   {p:[['Gavotte','Faber Piano Adventures 2B','done'],[['C 大调音阶 一个八度','C major scale, 1 octave'],['音阶','Scales'],'new']],f:['大拇指穿指要提前准备','Prepare the thumb-under crossing early'],t:'♩ = 84',hw:['C 大调音阶双手各 5 遍；录 Gavotte','C major scale 5 times each hand; record Gavotte']},
+   {p:[[['小步舞曲','Minuet in G'],'Petzold BWV Anh. 114','new'],[['C 大调音阶 一个八度','C major scale, 1 octave'],['音阶','Scales'],'review']],f:['右手第 1–8 小节；注意第 3 小节的指法','Right hand bars 1–8; watch the fingering in bar 3'],t:'♩ = 72',hw:['小步舞曲第 1–8 小节，右手录一遍','Minuet bars 1–8; record the right hand once']}
+  ]},
+ {id:'sophia',name:'Sophia Zhang',email:'sophia.z@example.com',contact:['本人','Student'],cal:'apple',lang:'en',level:['中级 · 浪漫派','Intermediate · Romantic'],group:'g2',wd:1,h:18,m:30,dur:60,done:8,paid:1,pre:true,
+  notes:[
+   {p:[[['a 小调圆舞曲','Waltz in A minor'],'Chopin B. 150','new']],f:['左手低音要深，二三拍轻；踏板换得干净','Deep left-hand bass, light beats 2 and 3; change the pedal cleanly'],t:'♩. = 50',hw:['圆舞曲第 1–16 小节，踏板单独练','Waltz bars 1–16; practice the pedaling on its own']},
+   {p:[[['a 小调圆舞曲','Waltz in A minor'],'Chopin B. 150','review'],[['练习曲 No. 1','Etude No. 1'],'Czerny Op. 849','new']],f:['中段转大调要换音色；Czerny 手指独立','Change the tone color when the middle section turns major; Czerny for finger independence'],t:'♩. = 58',hw:['圆舞曲全曲；Czerny 第 1–8 小节','Whole waltz; Czerny bars 1–8']},
+   {p:[[['a 小调圆舞曲','Waltz in A minor'],'Chopin B. 150','done'],[['二部创意曲 No. 1','Invention No. 1'],'Bach BWV 772','new']],f:['Bach 两个声部要一样清楚，先分手','Both Bach voices equally clear; start hands separately'],t:'♩ = 66',hw:['录 Chopin 圆舞曲完整演奏；Bach 分手练','Record the full Chopin waltz; Bach hands separately']}
+  ]},
+ {id:'mia',name:'Mia Chen',email:'chen.family@example.com',contact:['家长：陈先生','Parent: Mr. Chen'],cal:'google',lang:'en',level:['启蒙 · Faber 1','Early beginner · Faber 1'],group:'g0',wd:6,h:10,m:30,dur:30,done:5,paid:1,pre:false,
+  notes:[
+   {p:[['Hot Cross Buns',['Faber 1 · 民歌','Faber 1 · Folk tune'],'new']],f:['手形像握着一个小球；边弹边数 1-2-3-4','Hold the hand like a small ball; count 1-2-3-4 while playing'],t:'♩ = 72',hw:['Hot Cross Buns 每天 3 遍，录一遍','Hot Cross Buns 3 times a day; record once']},
+   {p:[['Hot Cross Buns',['Faber 1 · 民歌','Faber 1 · Folk tune'],'done'],['Merrily We Roll Along',['Faber 1 · 民歌','Faber 1 · Folk tune'],'new']],f:['换手的时候不要停；三指要站稳','Don\'t stop when switching hands; keep finger 3 firm'],t:'♩ = 80',hw:['Merrily We Roll Along 右手，录一遍','Merrily We Roll Along, right hand; record once']}
+  ]}
+];
+const GROUPS=[['g0',['启蒙组','Early beginners']],['g1',['初级组','Beginners']],['g2',['中级组','Intermediate']]];
+const groupName=g=>nm((GROUPS.find(x=>x[0]===g)||[,''])[1]);
+const ADMIN_EMAILS=['teacher@example.com'];
+const ST_LABEL={new:['新曲','New'],review:['巩固','Review'],done:['完成','Done']};
+const ST_PARSE={'新曲':'new','巩固':'review','完成':'done',new:'new',review:'review',done:'done'};
+
+/* ---------- v4：日期、家长、头像、主题、庆祝 ---------- */
+const ymd=d=>{d=new Date(d);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+const pymd=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const today=()=>state.demoDay?pymd(state.demoDay):new Date(now);
+const sameMD=(a,b)=>a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+const dayDiff=(a,b)=>Math.round((sod(a)-sod(b))/DAY);
+function nextOcc(str,from){const b=pymd(str);let d=new Date(from.getFullYear(),b.getMonth(),b.getDate());if(sod(d)<sod(from))d=new Date(from.getFullYear()+1,b.getMonth(),b.getDate());return d}
+function ageOf(s){if(!s.birth)return null;const b=pymd(s.birth),t=today();let a=t.getFullYear()-b.getFullYear();if(t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()))a--;return a}
+const fmtYMD=(str,lg=LANG)=>{const d=pymd(str);return lg==='en'?`${MON_EN[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`:`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`};
+const parentsOf=sid=>state.parents.filter(p=>p.kids.includes(sid));
+const par=id=>state.parents.find(p=>p.id===id);
+const hasParent=s=>parentsOf(s.id).length>0;
+const payerOf=s=>parentsOf(s.id)[0]||s;
+const mailTo=s=>s.email||(parentsOf(s.id)[0]||{}).email||'';
+const showPts=sid=>stu(sid).showPoints!==false;
+const totalLessons=s=>doneOf(s.id).length+(s.adj||0);
+const totalHours=s=>(doneOf(s.id).reduce((a,l)=>a+l.dur,0)+(s.adj||0)*s.dur)/60;
+function span(s){if(!s.start)return null;const a=pymd(s.start),t=today();let m=(t.getFullYear()-a.getFullYear())*12+t.getMonth()-a.getMonth();if(t.getDate()<a.getDate())m--;m=Math.max(0,m);return {y:Math.floor(m/12),m:m%12}}
+const spanLabel=sp=>sp?(sp.y?L(`${sp.y} 年 ${sp.m} 个月`,`${sp.y} yr ${sp.m} mo`):L(`${sp.m} 个月`,`${sp.m} mo`)):'—';
+
+/* 头像 */
+const KID_AV=['🐼','🦊','🐱','🐶','🦄','🐰','🐯','🦁','🐸','🐙','🐧','🦋'];
+const ADULT_AV=['🎹','🎼','🌿','☕','🌙','🍃','🕊️','🦋','🌸','🎷','📚','🌻'];
+const AV_COL=['#F6D7B0','#CFE6D8','#D6DDF5','#F3D0DA','#E9E2B5','#D5EAF2'];
+function avatar(p,size=34){
+  const a=p.avatar,st=`width:${size}px;height:${size}px;font-size:${Math.round(size*.52)}px`;
+  if(a&&a.t==='photo')return `<div class="av" style="${st}"><img src="${a.url}" alt=""></div>`;
+  if(a&&a.t==='emoji')return `<div class="av" style="${st};background:${a.c||AV_COL[0]};color:#1C2333">${a.v}</div>`;
+  const ini=initials(String(nm(p.name)||'?'));return `<div class="av" style="width:${size}px;height:${size}px;font-size:${Math.round(size*(ini.length>1&&!/[A-Za-z]/.test(ini)?.36:.4))}px">${esc(ini)}</div>`;
+}
+function logoHtml(){
+  if(state.logo)return `<img class="logo" src="${state.logo}" alt="${L('琴房 logo','Piano Studio logo')}">`;
+  return `<span class="logo-ph"><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="2" y="3" width="30" height="28" rx="5" fill="var(--accent)"/><g fill="var(--accent-ink)"><rect x="6" y="8" width="3" height="16" rx="1"/><rect x="11" y="8" width="3" height="16" rx="1"/><rect x="16" y="8" width="3" height="16" rx="1"/><rect x="21" y="8" width="3" height="16" rx="1"/><rect x="26" y="8" width="3" height="16" rx="1"/></g></svg></span>`;
+}
+
+/* 季节、节庆、背景 */
+const LNY={2026:[2,17],2027:[2,6],2028:[1,26],2029:[2,13]};
+function thanksgiving(y){const d=new Date(y,10,1);const off=(4-d.getDay()+7)%7;return new Date(y,10,1+off+21)}
+function festival(t){
+  const y=t.getFullYear(),m=t.getMonth()+1,d=t.getDate(),md=m*100+d;
+  const lny=LNY[y];if(lny&&Math.abs(dayDiff(t,new Date(y,lny[0]-1,lny[1])))<=7)return 'lunar';
+  if(md>=210&&md<=214)return 'valentine';
+  if(md>=1015&&md<=1101)return 'halloween';
+  const tg=dayDiff(t,thanksgiving(y));if(tg>=-7&&tg<=1)return 'thanks';
+  if(md>=1210&&md<=1226)return 'xmas';
+  if(md>=1227||md<=103)return 'newyear';
+  return null;
+}
+const season=t=>{const m=t.getMonth()+1;return m>=3&&m<=5?'spring':m>=6&&m<=8?'summer':m>=9&&m<=11?'fall':'winter'};
+const FEST={
+  halloween:{n:['万圣节快乐！','Happy Halloween!'],ic:'🎃',kid:{g:['#FFD27A','#C9A0F5'],e:['🎃','👻','🦇','🍬','🌙','🕸️']},ad:{g:['#F6EEF8','#FBEFE2'],e:['🎃','🍂','🌙','🕸️']}},
+  thanks:{n:['感恩节快乐！','Happy Thanksgiving!'],ic:'🦃',kid:{g:['#FFD9A0','#F4A261'],e:['🦃','🍂','🍁','🥧','🌽','🍎']},ad:{g:['#FBF1E3','#F3E3D0'],e:['🍂','🍁','🌾','🥧']}},
+  xmas:{n:['圣诞快乐！','Merry Christmas!'],ic:'🎄',kid:{g:['#B7E4C7','#FFB3B3'],e:['🎄','⛄','🎁','🔔','⭐','❄️']},ad:{g:['#EAF3EE','#F6ECEC'],e:['❄️','⭐','🎄','🔔']}},
+  newyear:{n:['新年快乐！','Happy New Year!'],ic:'🎆',kid:{g:['#A9C7FF','#FFD6A5'],e:['🎆','🎉','🥳','✨','🎈','🎊']},ad:{g:['#EDF0FA','#F9F1E6'],e:['✨','🎆','🥂']}},
+  valentine:{n:['情人节快乐！','Happy Valentine\'s Day!'],ic:'💝',kid:{g:['#FFC2D4','#FFE3EC'],e:['💝','🌹','💕','🎹','🎵','🍫']},ad:{g:['#FAEDF1','#F7EAEA'],e:['🌹','💕','🎵']}},
+  lunar:{n:['新春快乐！','Happy Lunar New Year!'],ic:'🧧',kid:{g:['#FF9A8B','#FFD86B'],e:['🧧','🏮','🎆','🐉','🧨','🥟']},ad:{g:['#F9EDEA','#F8F0DC'],e:['🏮','🧧','🎆','🌸']}}
+};
+const SEAS={
+  spring:{kid:['#C8F0D2','#FFE3F0'],ad:['#EEF5EF','#F7EFF3'],e:['🌸','🦋','🌷','🐝']},
+  summer:{kid:['#BDE8FF','#FFF1A8'],ad:['#EAF3F7','#F9F5E3'],e:['☀️','🍦','🌊','🍉']},
+  fall:{kid:['#FFE0B2','#F6C28B'],ad:['#F7F0E6','#F1E7DA'],e:['🍂','🍁','🌰','🍄']},
+  winter:{kid:['#CDE8FF','#EEF3FF'],ad:['#EDF1F6','#F4F1F7'],e:['❄️','⛄','🧣','☃️']}
+};
+const STYLES={animals:{n:['动物乐园','Animal Park'],e:['🐶','🐱','🐼','🐰','🦊','🐸']},garden:{n:['花园独角兽','Unicorn Garden'],e:['🦄','🌈','🦋','🌸','🐝','🍓']},space:{n:['星空探险','Space Trip'],e:['🚀','⭐','🪐','🌙','🛸','🌠']},ocean:{n:['海底世界','Under the Sea'],e:['🐳','🐠','🐙','🦀','🐚','🐬']}};
+const styleOf=s=>{if(s.theme&&STYLES[s.theme])return s.theme;const a=ageOf(s);return a==null||a<=7?'animals':a<=10?'garden':'space'};
+const tileCache={};
+function tileUri(em,kid){
+  const key=em.join('')+kid;if(tileCache[key])return tileCache[key];
+  const size=kid?280:340,fs=kid?46:34,n=kid?9:6;let t='';
+  for(let i=0;i<n;i++){const x=((i*97+23)%(size-60))+10,y=((i*61+37)%(size-50))+fs,r=((i*37)%50)-25;
+    t+=`<text x="${x}" y="${y}" transform="rotate(${r} ${x} ${y})">${em[i%em.length]}</text>`}
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><g font-size="${fs}" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif">${t}</g></svg>`;
+  return tileCache[key]='data:image/svg+xml,'+encodeURIComponent(svg);
+}
+function applyTheme(){
+  const bg=document.getElementById('bg');if(!bg)return;
+  const t=today(),occ=festival(t),se=season(t);
+  const s=state.role==='student'?stu(state.sid):null,kid=!!(s&&s.kind==='child');
+  let g,em;
+  if(occ){const v=FEST[occ][kid?'kid':'ad'];g=v.g;em=v.e}
+  else{g=SEAS[se][kid?'kid':'ad'];em=kid?[...STYLES[styleOf(s)].e,...SEAS[se].e.slice(0,2)]:SEAS[se].e}
+  bg.style.background=`linear-gradient(160deg,${g[0]},${g[1]})`;
+  bg.style.setProperty('--tile',`url("${tileUri(em,kid)}")`);
+  bg.dataset.kid=kid?'1':'0';
+}
+function festBanner(){const o=festival(today());if(!o)return '';const f=FEST[o];return `<div class="fest" role="note"><span class="fest-ic" aria-hidden="true">${f.ic}</span><b>${nm(f.n)}</b></div>`}
+
+/* 生日、周年 */
+function celebrations(sid){
+  const s=stu(sid),t=today(),out=[];
+  if(s.birth&&sameMD(pymd(s.birth),t))out.push({k:'birthday',age:ageOf(s)});
+  if(s.start){const st=pymd(s.start),y=t.getFullYear()-st.getFullYear();if(y>=1&&sameMD(st,t))out.push({k:'anniv',years:y})}
+  return out;
+}
+function upcomingCelebs(){
+  const t=today(),out=[];
+  state.students.forEach(s=>{
+    [['birthday',s.birth],['anniv',s.start]].forEach(([k,ds])=>{
+      if(!ds)return;const d=nextOcc(ds,t),diff=dayDiff(d,t);if(diff>7)return;
+      const years=d.getFullYear()-pymd(ds).getFullYear();if(k==='anniv'&&years<1)return;
+      const les=lessonsOf(s.id).filter(l=>l.status==='scheduled').find(l=>Math.abs(dayDiff(l.date,d))<=3);
+      out.push({s,k,d,diff,years,les});
+    });
+  });
+  return out.sort((a,b)=>a.diff-b.diff);
+}
+function maybeCelebrate(){
+  if(state.role!=='student')return;
+  const c=celebrations(state.sid)[0];if(!c)return;
+  const key=state.sid+c.k+ymd(today());if(state.shown[key])return;
+  state.shown[key]=1;openModal(()=>modalCelebrate(c,state.sid));
+}
+function modalCelebrate(c,sid){
+  const s=stu(sid),cols=['#E69F00','#56B4E9','#009E73','#CC79A7','#F0E442','#D55E00'];
+  const conf=Array.from({length:44},(_,i)=>`<i class="cf" style="left:${(i*37)%100}%;background:${cols[i%6]};animation-delay:${(i*53%30)/10}s;animation-duration:${3+(i%4)*.6}s"></i>`).join('');
+  let title,sub,emo;
+  if(c.k==='birthday'){title=L(`${s.name}，生日快乐！`,`Happy Birthday, ${s.name}!`);sub=L(`今天你 ${c.age} 岁啦！祝你每天都开心地弹琴。`,`You're ${c.age} today! Wishing you happy playing every day.`);emo=['🎂','🎈','🎁','🎹']}
+  else{title=L('钢琴周年快乐！','Happy Piano Anniversary!');sub=L(`${s.name} 和钢琴在一起第 ${c.years} 年了，已经上了 ${totalLessons(s)} 节课。`,`${s.name} has been playing for ${c.years} year${c.years>1?'s':''}, with ${totalLessons(s)} lessons so far.`);emo=['🎹','🎼','⭐','🏆']}
+  const wave=[...title].map((ch,i)=>`<span style="animation-delay:${i*.06}s">${ch===' '?' ':esc(ch)}</span>`).join('');
+  return `<div class="card-h"><span class="small muted">${c.k==='birthday'?L('生日','Birthday'):L('周年纪念日','Anniversary')}</span><button class="btn sm" data-act="close">${L('关闭','Close')}</button></div>
+  <div class="celeb">${conf}<div class="celeb-main"><div class="celeb-emo" aria-hidden="true">${emo[0]}</div><h2 class="celeb-t">${wave}</h2><p>${sub}</p><div class="celeb-row" aria-hidden="true">${emo.slice(1).map((e,i)=>`<span style="animation-delay:${i*.25}s">${e}</span>`).join('')}</div></div></div>`;
+}
+
+/* 通知、留言 */
+const userKey=()=>state.role==='admin'?'admin':state.role==='parent'?'parent:'+state.pid:'student:'+state.sid;
+function noticeVisible(n){
+  if(state.role==='student')return n.to.scope==='all'||(n.to.sid===state.sid&&n.aud!=='parent');
+  if(state.role==='parent')return n.to.scope==='all'||(par(state.pid).kids.includes(n.to.sid)&&n.aud!=='student');
+  return true;
+}
+const myNotices=()=>state.notices.filter(noticeVisible).sort((a,b)=>b.ts-a.ts);
+const unreadNotices=()=>myNotices().filter(n=>!n.read[userKey()]).length;
+const msgKids=()=>state.role==='parent'?par(state.pid).kids:[state.sid];
+const unreadMsgsU=()=>state.messages.filter(m=>msgKids().includes(m.sid)&&m.from==='teacher'&&!m.readU[userKey()]).length;
+const unreadMsgsT=()=>state.messages.filter(m=>m.from!=='teacher'&&!m.readT).length;
+function markSeen(tab){
+  const k=userKey();
+  if(tab==='unotices'){const u=myNotices().filter(n=>!n.read[k]);state.fresh.n=new Set(u.map(n=>n.id));u.forEach(n=>n.read[k]=true)}
+  if(tab==='umessages'){const u=state.messages.filter(m=>m.sid===state.sid&&m.from==='teacher'&&!m.readU[k]);state.fresh.m=new Set(u.map(m=>m.id));u.forEach(m=>m.readU[k]=true)}
+}
+let _nid=100;
+function pushNotice(sid,aud,title,body){state.notices.unshift({id:'n'+(++_nid),ts:Date.now(),to:{scope:'student',sid},aud,title,body,read:{}})}
+const msgsOf=sid=>state.messages.filter(m=>m.sid===sid).sort((a,b)=>a.ts-b.ts);
+function msgWho(m){return m.from==='teacher'?L('老师','Teacher'):m.from==='parent'?L(`${nm(par(m.pid).name)}（家长）`,`${nm(par(m.pid).name)} (parent)`):stu(m.sid).name}
+function bubbles(sid,meRole){
+  const list=msgsOf(sid);
+  if(!list.length)return `<p class="muted small">${L('还没有留言。','No messages yet.')}</p>`;
+  return `<div class="thread">${list.map(m=>`<div class="bub ${m.from===meRole?'me':''} ${state.fresh.m.has(m.id)?'fresh':''}"><span class="who-l">${esc(msgWho(m))} · ${fmtDT(m.ts)}${state.fresh.m.has(m.id)?` · <b>${L('新','New')}</b>`:''}</span><span>${esc(tx(m.text))}</span></div>`).join('')}</div>`;
+}
+
+/* 正在学习：从每节课的曲目记录里归纳 */
+function learning(sid){
+  const m=new Map();
+  lessonsOf(sid).filter(l=>l.status==='done'&&l.notes).sort((a,b)=>a.date-b.date).forEach(l=>l.notes.p.forEach(p=>{
+    const k=JSON.stringify(p[0]);const e=m.get(k)||{first:l.date,n:0};e.p=p;e.last=l.date;e.n++;e.st=p[2];m.set(k,e)}));
+  const all=[...m.values()];
+  return {cur:all.filter(e=>e.st!=='done').sort((a,b)=>b.last-a.last),past:all.filter(e=>e.st==='done').sort((a,b)=>b.last-a.last)};
+}
+
+/* 积分兑换 */
+const spent=sid=>state.redemptions.filter(x=>x.sid===sid).reduce((a,x)=>a+x.cost,0);
+const balance=sid=>total(sid)-spent(sid);
+
+/* 保存文件（downloads 能力）、空白五线谱 */
+let DL=null;
+try{const c=window.claude;if(c&&c.use)c.use('downloads').then(d=>{DL=d}).catch(()=>{})}catch(_){}
+function saveFile(name,data){
+  if(!DL){toast(L('这个窗口不能保存文件，请在 claude.ai 里打开本页。','Saving files isn\'t available in this view. Open the page in claude.ai.'));return}
+  DL.save({filename:name,data}).then(()=>toast(L('已保存','Saved'))).catch(e=>{if(!e||e.code!=='declined')toast(L('没能保存','Could not save'))});
+}
+function staffSheetSvg(grand){
+  const W=794,H=1123,sets=grand?5:10,step=grand?200:104;let g='';
+  const draw=y=>{let s='';for(let i=0;i<5;i++)s+=`<line x1="60" x2="734" y1="${y+i*10}" y2="${y+i*10}"/>`;return s+`<line x1="60" x2="60" y1="${y}" y2="${y+40}"/><line x1="734" x2="734" y1="${y}" y2="${y+40}"/>`};
+  for(let k=0;k<sets;k++){const y0=100+k*step;g+=draw(y0);if(grand){g+=draw(y0+70)+`<line x1="60" x2="60" y1="${y0}" y2="${y0+110}"/>`}}
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="#fff"/><text x="60" y="56" font-family="sans-serif" font-size="14" fill="#222">姓名 Name: ____________________    日期 Date: ____________</text><g stroke="#222" stroke-width="1" fill="none">${g}</g></svg>`;
+}
+const WS={W:720,n:4,sp:12,top:34,gap:120};
+const wsH=()=>WS.top+WS.n*WS.gap-40;
+function wsInner(){
+  let s='';
+  for(let k=0;k<WS.n;k++){const y0=WS.top+k*WS.gap;for(let i=0;i<5;i++)s+=`<line x1="30" x2="${WS.W-20}" y1="${y0+i*WS.sp}" y2="${y0+i*WS.sp}"/>`}
+  state.ws.notes.forEach(n=>{s+=`<ellipse cx="${n.x}" cy="${n.y}" rx="7.5" ry="5.4" transform="rotate(-18 ${n.x} ${n.y})"/><line class="stem" x1="${n.x+6.6}" y1="${n.y-1}" x2="${n.x+6.6}" y2="${n.y-32}"/>`});
+  return s;
+}
+function modalSheet(){
+  return `<div class="card-h"><div><h2>${L('空白五线谱（在线填写）','Blank staff paper (fill in online)')}</h2><p class="small muted">${L('点谱线或线间放一个音符，再点一次就取消。','Tap a line or space to place a note. Tap it again to remove it.')}</p></div><button class="btn sm" data-act="close">${L('关闭','Close')}</button></div>
+  <div class="sheet"><svg id="ws-svg" data-act="ws-click" viewBox="0 0 ${WS.W} ${wsH()}" role="img" aria-label="${L('五线谱，可以点击放音符','Staff paper; tap to place notes')}">${wsInner()}</svg></div>
+  <div class="btns"><button class="btn" data-act="ws-undo">${L('撤销','Undo')}</button><button class="btn" data-act="ws-clear">${L('清空','Clear')}</button><button class="btn primary" data-act="ws-save">${L('保存为图片','Save as image')}</button><button class="btn" data-act="ws-send">${L('交给老师','Send to teacher')}</button></div>`;
+}
+function wsPng(){
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${WS.W*2}" height="${wsH()*2}" viewBox="0 0 ${WS.W} ${wsH()}"><rect width="100%" height="100%" fill="#fff"/><g stroke="#222" stroke-width="1" fill="#222">${wsInner().replace(/class="stem"/g,'stroke-width="1.6"')}</g></svg>`;
+  return new Promise((res,rej)=>{const img=new Image(),u=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+    img.onload=()=>{const c=document.createElement('canvas');c.width=WS.W*2;c.height=wsH()*2;c.getContext('2d').drawImage(img,0,0);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(),'image/png')};img.onerror=rej;img.src=u});
+}
+
+/* 日历 */
+const CAL_COL=['#0072B2','#E69F00','#009E73','#CC79A7','#D55E00'];
+const stuColor=sid=>CAL_COL[Math.max(0,state.students.findIndex(s=>s.id===sid))%CAL_COL.length];
+function mondayOf(d){d=new Date(d);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d}
+
+
+/* ---------- v4 示例数据：学生新字段、家长、通知、留言、资源、奖励 ---------- */
+function extraOf(c){
+  const yago=(y,dd=0)=>{const d=new Date(now);d.setFullYear(d.getFullYear()-y);d.setDate(d.getDate()+dd);return ymd(d)};
+  const nxt=new Date(lastWeekday(c.wd,c.h,c.m).getTime()+7*DAY);
+  const X={
+    emma:{email:'emma.li@example.com',kind:'child',birth:yago(9,45),start:yago(1),adj:32,showPoints:true,avatar:{t:'emoji',v:'🦊',c:'#F6D7B0'},
+      books:[{n:['小汤 3','Thompson 3'],s:'current'},{n:['小汤 2','Thompson 2'],s:'done'},{n:['小汤 1','Thompson 1'],s:'done'}]},
+    zihan:{email:'zihan.wang@example.com',kind:'child',birth:yago(14,120),start:yago(3,-40),adj:60,showPoints:true,theme:'space',avatar:{t:'emoji',v:'🦁',c:'#D6DDF5'},
+      books:[{n:['克莱门蒂小奏鸣曲集','Clementi Sonatinas'],s:'current'},{n:['约翰·汤普森 4','Thompson 4'],s:'done'}]},
+    lucas:{email:'lucas.chen@example.com',kind:'child',birth:ymd(new Date(nxt.getFullYear()-8,nxt.getMonth(),nxt.getDate())),start:yago(2,20),adj:25,showPoints:true,
+      books:[{n:['Faber 2B','Faber 2B'],s:'current'},{n:['Faber 2A','Faber 2A'],s:'done'},{n:['Faber 1','Faber 1'],s:'done'}]},
+    sophia:{email:'sophia.z@example.com',kind:'adult',birth:yago(31,200),start:yago(0,-240),adj:0,showPoints:false,avatar:{t:'emoji',v:'🌿',c:'#CFE6D8'},
+      books:[{n:['肖邦圆舞曲集','Chopin Waltzes'],s:'current'},{n:['车尔尼 849','Czerny 849'],s:'current'}]},
+    mia:{email:null,kind:'child',birth:yago(7),start:yago(0,-35),adj:0,showPoints:true,
+      books:[{n:['Faber 1','Faber 1'],s:'current'}]}
+  };
+  return X[c.id]||{};
+}
+function seedExtra(){
+  const parents=[
+    {id:'p-li',name:['李女士','Ms. Li'],email:'lifamily@example.com',lang:'en',kids:['emma'],avatar:{t:'emoji',v:'🌸',c:'#F3D0DA'}},
+    {id:'p-chen',name:['陈先生','Mr. Chen'],email:'chen.family@example.com',lang:'en',kids:['lucas','mia'],avatar:null},
+    {id:'p-wang',name:['王先生','Mr. Wang'],email:'wang.dad@example.com',lang:'zh',kids:['zihan'],avatar:null}
+  ];
+  const notices=[
+    {id:'n1',ts:+now-2*DAY,to:{scope:'all'},aud:'both',read:{},
+      title:['万圣节周六：穿戏服来上课吧','Halloween Saturday: wear a costume to class'],
+      body:['10 月 31 日（周六）来上课的同学可以穿戏服，课上会弹一小段万圣节曲子。','Students with a lesson on Saturday, Oct 31 are welcome to wear a costume. We will play a short Halloween tune in class.']},
+    {id:'n2',ts:+now-DAY,to:{scope:'student',sid:'emma'},aud:'both',read:{},
+      title:['Emma：下节课带《小步舞曲》的谱子','Emma: please bring your Minuet score next lesson'],
+      body:['下节课要一起看第 9–16 小节的指法，请带上谱子。','We will go over the fingering in bars 9–16 next lesson. Please bring your score.']},
+    {id:'n3',ts:+now-3*HOUR,to:{scope:'student',sid:'sophia'},aud:'student',read:{},
+      title:['Sophia：这周可以多留 15 分钟','Sophia: you can stay 15 extra minutes this week'],
+      body:['这周我后面没有课，可以一起把 Bach 的两个声部过一遍。','I have no lesson after yours this week, so we can run through both Bach voices together.']}
+  ];
+  const messages=[
+    {id:'m1',sid:'lucas',from:'student',ts:+now-2*DAY,text:'老师，Gavotte 第 3 小节我总是弹不顺。',readT:true,readU:{}},
+    {id:'m2',sid:'lucas',from:'teacher',ts:+now-2*DAY+HOUR,text:['先把左手单独慢弹 5 遍，再合手。下节课我们一起看。','Play the left hand alone slowly five times, then hands together. We will look at it together next lesson.'],readT:true,readU:{}},
+    {id:'m3',sid:'mia',from:'parent',pid:'p-chen',ts:+now-3*HOUR,text:'Mia has a cold and might miss Saturday. Can we move her lesson to Sunday?',readT:false,readU:{}}
+  ];
+  const resources=[
+    {id:'r1',kind:'staff',interactive:true,title:['空白五线谱（在线填写）','Blank staff paper (fill in online)'],desc:['可以下载后打印，也可以点“在线填写”，直接在谱子上点出音符。','Download it to print, or tap "Fill in online" to place notes right on the staff.'],mode:'all',groups:[],students:[],added:+now-20*DAY},
+    {id:'r2',kind:'grand',title:['空白大谱表','Blank grand staff'],desc:['高低音两行一组，适合写左右手的练习。','Treble and bass staves in pairs, for writing out both hands.'],mode:'all',groups:[],students:[],added:+now-20*DAY},
+    {id:'r3',kind:'file',file:{name:'scale-fingering.pdf'},title:['音阶指法练习纸','Scale fingering worksheet'],desc:['把各调音阶的指法写下来，每周填一个调。','Write out the fingering for one key a week.'],mode:'groups',groups:['g1','g2'],students:[],added:+now-9*DAY},
+    {id:'r4',kind:'file',file:{name:'rhythm-patterns.pdf'},title:['节奏型练习纸','Rhythm pattern worksheet'],desc:['拍手念节奏，再写出你听到的节奏型。','Clap and say each rhythm, then write down what you hear.'],mode:'students',groups:[],students:['emma','lucas'],added:+now-4*DAY},
+    {id:'r5',kind:'file',file:{name:'adult-sightreading.pdf'},title:['成人初学者读谱小抄','Sight-reading cheat sheet for adults'],desc:['常见节奏、调号和音程的速查表。','A quick reference for common rhythms, key signatures and intervals.'],mode:'students',groups:[],students:['sophia'],added:+now-2*DAY}
+  ];
+  const rewards=[
+    {id:'w1',name:['贴纸一张','A sticker'],cost:20,on:true,sample:true},
+    {id:'w2',name:['选一首想弹的曲子','Pick a piece to play'],cost:40,on:true,sample:true},
+    {id:'w3',name:['小礼物（老师挑）','A small gift (teacher\'s pick)'],cost:80,on:true,sample:true}
+  ];
+  return {parents,notices,messages,resources,rewards,redemptions:[]};
+}
+
+function seedLibrary(){
+  return {
+    cols:[
+      {id:'c-groove',name:['节拍律动','Grooves'],desc:['练节奏用的鼓点和律动，不分曲目','Drum grooves for rhythm practice, not tied to a piece'],mode:'all',groups:[],students:[],download:true},
+      {id:'c-faber',name:['Faber 老师声部','Faber teacher parts'],desc:['Faber Piano Adventures 配套的老师二重奏声部','Teacher duet parts from Faber Piano Adventures'],mode:'groups',groups:['g0','g1'],students:[],download:false},
+      {id:'c-thompson',name:['小汤伴奏','Thompson accompaniments'],desc:['约翰·汤普森现代钢琴教程配套伴奏','Accompaniments for John Thompson\'s Modern Course'],mode:'students',groups:[],students:['emma'],download:false},
+      {id:'c-exam',name:['考级曲目伴奏','Exam piece accompaniments'],desc:['不单独开放，只随作业发给学生','Not open on its own; sent only with homework'],mode:'hidden',groups:[],students:[],download:false}
+    ],
+    tracks:[
+      {id:'t1',cid:'c-groove',title:['4/4 律动','4/4 groove'],ver:'♩ = 80',dur:'2:00',bpm:80,meter:4},
+      {id:'t2',cid:'c-groove',title:['3/4 圆舞曲律动','3/4 waltz groove'],ver:'♩ = 120',dur:'2:00',bpm:120,meter:3},
+      {id:'t3',cid:'c-groove',title:['6/8 律动','6/8 groove'],ver:'♪ = 150',dur:'2:00',bpm:150,meter:6},
+      {id:'t4',cid:'c-faber',title:['Gavotte 老师声部','Gavotte teacher part'],ver:['慢速','Slow'],dur:'1:42',bpm:76,meter:4},
+      {id:'t5',cid:'c-faber',title:['Gavotte 老师声部','Gavotte teacher part'],ver:['原速','Full tempo'],dur:'1:15',bpm:104,meter:4},
+      {id:'t6',cid:'c-faber',title:['Hot Cross Buns 老师声部','Hot Cross Buns teacher part'],ver:['原速','Full tempo'],dur:'0:48',bpm:96,meter:4},
+      {id:'t7',cid:'c-thompson',title:['小汤 3 · 第 8 首伴奏','Thompson 3 · No. 8 accompaniment'],ver:['慢速','Slow'],dur:'2:10',bpm:72,meter:3},
+      {id:'t8',cid:'c-thompson',title:['小汤 3 · 第 8 首伴奏','Thompson 3 · No. 8 accompaniment'],ver:['原速','Full tempo'],dur:'1:36',bpm:100,meter:3},
+      {id:'t9',cid:'c-exam',title:['小步舞曲 弦乐伴奏','Minuet in G · strings'],ver:['慢速','Slow'],dur:'1:58',bpm:88,meter:3},
+      {id:'t10',cid:'c-exam',title:['小步舞曲 弦乐伴奏','Minuet in G · strings'],ver:['原速','Full tempo'],dur:'1:30',bpm:116,meter:3},
+      {id:'t11',cid:'c-exam',title:['Clementi Op. 36 No. 1 乐队伴奏','Clementi Op. 36 No. 1 · orchestra'],ver:['原速','Full tempo'],dur:'2:40',bpm:126,meter:4}
+    ]
+  };
+}
+
+function lastWeekday(wd,h,m){const d=new Date(now);d.setHours(h,m,0,0);d.setDate(d.getDate()-((d.getDay()-wd+7)%7));if(d>now)d.setDate(d.getDate()-7);return d}
+
+function seed(){
+  const students=STUDENT_CFG.map(c=>({id:c.id,name:c.name,email:c.email,contact:c.contact,cal:c.cal,lang:c.lang,level:c.level,group:c.group,paid:c.paid,wd:c.wd,h:c.h,m:c.m,dur:c.dur,...extraOf(c)}));
+  const lessons=[],assigns=[];
+  STUDENT_CFG.forEach((c,si)=>{
+    const last=lastWeekday(c.wd,c.h,c.m);
+    for(let i=1;i<=c.done;i++){
+      const date=new Date(last.getTime()-(c.done-i)*7*DAY);
+      const k=(i*7+si*3)%11;
+      const L0=c.notes.length;const note=c.notes[(((L0-1-(c.done-i))%L0)+L0)%L0];
+      const id=`${c.id}-${i}`,isLast=i===c.done;
+      lessons.push({id,sid:c.id,n:i,date:+date,dur:c.dur,status:'done',
+        confirmedAt:k===5?null:+date-(26+k)*HOUR,
+        signedAt:(isLast&&c.id==='lucas')?null:+date+(2+k)*HOUR,
+        notes:note});
+      const due=new Date(date);due.setDate(due.getDate()+6);due.setHours(20,0,0,0);
+      const forceOpen=c.id==='lucas'&&i===c.done-1;
+      let sub=null;
+      if(due>now||forceOpen)sub=null;
+      else if(k===3)sub=+due+DAY-3*HOUR;
+      else if(k===7)sub=null;
+      else sub=+due-((k%4)+1)*DAY+2*HOUR;
+      const feat=note.p.some(p=>p[2]==='done');
+      const t0=note.p[0][0],t0en=Array.isArray(t0)?t0[1]:t0;
+      assigns.push({id:'a-'+id,lid:id,sid:c.id,title:note.hw,piece:note.p[0],due:+due,submittedAt:sub,featured:feat,acc:[],accDays:7,
+        yt:sub?'ok':null,
+        video:sub?{name:`${t0en}.mov`,dur:`${1+(k%3)}:${pad((k*13)%60)}`,url:null}:null});
+    }
+    const nx=new Date(last);nx.setDate(nx.getDate()+7);
+    lessons.push({id:`${c.id}-${c.done+1}`,sid:c.id,n:c.done+1,date:+nx,dur:c.dur,status:'scheduled',confirmedAt:c.pre?+now-5*HOUR:null,signedAt:null,notes:null,remindedAt:c.pre?+now-30*HOUR:null});
+  });
+  /* 示例：作业里附带的伴奏 */
+  const latest=sid=>assigns.filter(a=>a.sid===sid).sort((a,b)=>b.due-a.due)[0];
+  [['emma',['t9']],['lucas',['t9','t10']],['mia',['t6']]].forEach(([sid,ids])=>{const a=latest(sid);if(a){a.acc=ids;a.accDays=7}});
+  const zOld=assigns.filter(a=>a.sid==='zihan'&&a.piece[2]!=='done'&&a.due<now-10*DAY).sort((a,b)=>b.due-a.due)[0];
+  if(zOld){zOld.acc=['t11'];zOld.accDays=7}
+  const zSub=assigns.filter(a=>a.sid==='zihan'&&a.submittedAt).sort((a,b)=>b.submittedAt-a.submittedAt)[0];
+  if(zSub)zSub.yt='failed';
+  return {students,lessons,assigns,library:seedLibrary(),...seedExtra()};
+}
+
+const defaultRules={confirm:2,sign:1,ontime:3,late:-1,missing:-3,noshow:-5,streakN:4,streakBonus:5,grace:3};
+const state={role:null,sid:null,pid:null,tab:null,selStudent:'emma',selCol:'c-faber',selRes:'r1',msgSel:'mia',pfFilter:'all',showOrig:false,rules:{...defaultRules},
+  demoDay:null,shown:{},fresh:{n:new Set(),m:new Set()},ws:{notes:[]},rs:null,logo:null,avPal:null,celebPending:false,calWeek:+mondayOf(now),
+  teacher:{name:['老师','Teacher'],avatar:{t:'emoji',v:'🎹',c:'#E9E2B5'}},
+  auth:{step:'email',email:'',code:null,err:'',remember:true,matches:[]},up:null,...seed()};
+
+/* ---------- 计算 ---------- */
+const stu=id=>state.students.find(s=>s.id===id);
+const lessonsOf=sid=>state.lessons.filter(l=>l.sid===sid);
+const doneOf=sid=>lessonsOf(sid).filter(l=>l.status==='done').sort((a,b)=>b.date-a.date);
+const nextOf=sid=>lessonsOf(sid).filter(l=>l.status==='scheduled').sort((a,b)=>a.date-b.date)[0];
+const assignsOf=sid=>state.assigns.filter(a=>a.sid===sid).sort((a,b)=>b.due-a.due);
+const pieceName=a=>nm(a.piece[0]);
+
+function tuition(s){const done=doneOf(s.id).length;const left=s.paid*10-done;const used=Math.max(0,Math.min(10,done-(s.paid-1)*10));return {done,used,left,due:left<=0}}
+
+function hwStatus(a){
+  if(a.submittedAt){return a.submittedAt<=a.due?{k:'ok',t:L('按时提交','On time')}:{k:'bad',t:L(`迟交 ${Math.ceil((a.submittedAt-a.due)/DAY)} 天`,`${days(Math.ceil((a.submittedAt-a.due)/DAY))} late`)}}
+  if(now<a.due)return {k:'wait',t:L(`${rel(a.due)}截止`,`Due ${rel(a.due)}`)};
+  const over=Math.ceil((now-a.due)/DAY);
+  if(over>state.rules.grace)return {k:'bad',t:L('未交','Missing')};
+  return {k:'bad',t:L(`已逾期 ${over} 天`,`${days(over)} overdue`)};
+}
+
+function ledger(sid){
+  const R=state.rules,out=[];
+  lessonsOf(sid).forEach(l=>{
+    if(l.confirmedAt)out.push({d:l.confirmedAt,label:L(`确认上课 · ${fmtD(l.date)}`,`Confirmed lesson · ${fmtD(l.date)}`),pts:R.confirm});
+    if(l.signedAt)out.push({d:l.signedAt,label:L(`课后签字 · 第 ${l.n} 节`,`Signed lesson ${l.n}`),pts:R.sign});
+    if(l.status==='noshow')out.push({d:l.date,label:L(`缺课未请假 · ${fmtD(l.date)}`,`No-show · ${fmtD(l.date)}`),pts:R.noshow});
+  });
+  let streak=0;
+  state.assigns.filter(a=>a.sid===sid).sort((a,b)=>a.due-b.due).forEach(a=>{
+    const p=pieceName(a);
+    if(a.submittedAt){
+      if(a.submittedAt<=a.due){streak++;out.push({d:a.submittedAt,label:L(`按时交作业 · ${p}`,`Homework on time · ${p}`),pts:R.ontime});
+        if(R.streakN>0&&streak%R.streakN===0)out.push({d:a.submittedAt+1,label:L(`连续 ${streak} 次按时交作业`,`${streak} on time in a row`),pts:R.streakBonus});}
+      else{streak=0;out.push({d:a.submittedAt,label:L(`作业迟交 · ${p}`,`Homework late · ${p}`),pts:R.late})}
+    }else if(now-a.due>R.grace*DAY){streak=0;out.push({d:a.due+R.grace*DAY,label:L(`作业未交 · ${p}`,`Homework missing · ${p}`),pts:R.missing})}
+  });
+  return out.sort((a,b)=>b.d-a.d);
+}
+const total=sid=>ledger(sid).reduce((s,e)=>s+e.pts,0);
+
+/* ---------- 伴奏权限 ---------- */
+const colOf=id=>state.library.cols.find(c=>c.id===id);
+const trk=id=>state.library.tracks.find(t=>t.id===id);
+const tracksIn=cid=>state.library.tracks.filter(t=>t.cid===cid);
+const siblingsOf=sid=>{const p=parentsOf(sid)[0];return p?p.kids.map(stu).filter(Boolean):[stu(sid)]};
+function colOpenTo(c,s){return c.mode==='all'||(c.mode==='groups'&&c.groups.includes(s.group))||(c.mode==='students'&&c.students.includes(s.id))}
+function accUntil(a){return a.accDays==null?Infinity:a.due+a.accDays*DAY}
+const accActive=a=>a.acc&&a.acc.length&&now<accUntil(a);
+function accKeepLabel(a){if(a.accDays==null)return L('截止后一直保留','kept after the due date');const u=accUntil(a);return now<u?L(`${fmtD(u)} 收回`,`available until ${fmtD(u)}`):L(`${fmtD(u)} 已收回`,`removed ${fmtD(u)}`)}
+function accessSummary(c){
+  if(c.mode==='all')return L('所有学生','All students');
+  if(c.mode==='groups')return c.groups.length?c.groups.map(groupName).join(L('、',', ')):L('还没选分组','No group chosen');
+  if(c.mode==='students')return c.students.length?c.students.map(id=>stu(id).name).join(L('、',', ')):L('还没选学生','No student chosen');
+  return L('不公开 · 只随作业','Hidden · homework only');
+}
+/* 学生能看到的伴奏：曲库对他开放，或者当前作业里附带了 */
+function visibleTracks(sid){
+  const s=stu(sid),out=new Map();
+  state.library.tracks.forEach(t=>{if(colOpenTo(colOf(t.cid),s))out.set(t.id,{t,col:true,a:null})});
+  state.assigns.filter(a=>a.sid===sid&&accActive(a)).sort((a,b)=>b.due-a.due).forEach(a=>{
+    a.acc.forEach(id=>{const v=out.get(id);if(!v)out.set(id,{t:trk(id),col:false,a});else if(!v.a)v.a=a});
+  });
+  return [...out.values()];
+}
+const usageOf=tid=>state.assigns.filter(a=>a.acc&&a.acc.includes(tid));
+
+/* ---------- 小组件 ---------- */
+function keyboard(used){
+  const W=24,H=80,n=10;let s=`<svg class="kb" viewBox="0 0 ${W*n+2} ${H+2}" role="img" aria-label="${L(`本期 10 节课已上 ${used} 节`,`${used} of 10 lessons used this term`)}">`;
+  for(let i=0;i<n;i++)s+=`<rect x="${1+i*W}" y="1" width="${W}" height="${H}" rx="3" class="wk${i<used?' on':''}"/>`;
+  [0,1,3,4,5,7,8].forEach(i=>{s+=`<rect x="${1+(i+1)*W-7}" y="1" width="14" height="${H*.58}" rx="2" class="bk"/>`});
+  for(let i=0;i<n;i++)s+=`<text x="${1+i*W+W/2}" y="${H-8}" class="kn num${i<used?' on':''}">${i+1}</text>`;
+  return s+'</svg>';
+}
+const initials=n=>/[A-Za-z]/.test(n[0])?n.split(' ').map(x=>x[0]).join('').slice(0,2):n.slice(-2);
+const calLabel=c=>c==='apple'?L('Apple 日历','Apple Calendar'):L('Google 日历','Google Calendar');
+const langLabel=lg=>lg==='en'?'English':'中文';
+function thumb(seedStr){
+  let h=0;for(const ch of seedStr)h=(h*31+ch.charCodeAt(0))>>>0;
+  let notes='';for(let i=0;i<7;i++){const x=30+i*38,y=40+((h>>(i*3))%9)*6;notes+=`<ellipse class="nh" cx="${x}" cy="${y}" rx="6" ry="4.4" transform="rotate(-20 ${x} ${y})"/>`}
+  let lines='';for(let i=0;i<5;i++)lines+=`<line x1="12" x2="308" y1="${46+i*12}" y2="${46+i*12}"/>`;
+  return `<svg viewBox="0 0 320 200" aria-hidden="true"><g class="staff" transform="translate(0,10)">${lines}${notes}</g></svg>`;
+}
+function pieceList(p){return `<div class="pieces">${p.map(x=>`<div class="piece"><span class="work">${esc(nm(x[0]))}</span><span class="muted small">${esc(nm(x[1]))}</span><span class="pill ${x[2]==='done'?'ok':x[2]==='new'?'wait':'plain'}">${esc(nm(ST_LABEL[x[2]]||x[2]))}</span></div>`).join('')}</div>`}
+
+const IC_PLAY='<svg class="ic-play" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.2 1.2l6.6 3.8-6.6 3.8z"/></svg>';
+const IC_STOP='<svg class="ic-stop" viewBox="0 0 10 10" aria-hidden="true"><rect x="2" y="2" width="6" height="6" rx="1"/></svg>';
+const IC_CAM='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/></svg>';
+const IC_LIB='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>';
+function playBtn(tid){const t=trk(tid);return `<button class="playbtn" data-act="play" data-tid="${tid}" aria-pressed="false" aria-label="${L('播放','Play')} ${esc(nm(t.title))} ${esc(nm(t.ver))}">${IC_PLAY}${IC_STOP}</button>`}
+function accChip(tid){const t=trk(tid);return `<button class="acc-chip" data-act="play" data-tid="${tid}" aria-pressed="false"><span class="dot">${IC_PLAY}${IC_STOP}</span>${esc(nm(t.title))} · ${esc(nm(t.ver))}</button>`}
+function trackRow(v,opts={}){
+  const t=v.t,c=colOf(t.cid);
+  const note=opts.note!=null?opts.note:(v.a?L(`随作业解锁 · ${accKeepLabel(v.a)}`,`Unlocked by homework · ${accKeepLabel(v.a)}`):L(`曲库：${nm(c.name)}`,`Library: ${nm(c.name)}`));
+  const right=opts.admin?`<span class="small muted num">${L(`${usageOf(t.id).length} 条作业`,`${usageOf(t.id).length} homework`)}</span>`
+    :(c.download?`<button class="btn sm" data-act="dl" data-tid="${t.id}">${L('下载','Download')}</button>`:`<span class="small muted">${L('仅在线播放','Stream only')}</span>`);
+  return `<div class="trk">${playBtn(t.id)}<div><span class="work">${esc(nm(t.title))}</span> <span class="pill plain">${esc(nm(t.ver))}</span><div class="small muted num">${esc(t.dur)}${note?' · '+esc(note):''}</div></div>${right}</div>`;
+}
+
+/* 示例音频：浏览器里合成几小节伴奏型，代替真实的 mp3 */
+let actx=null,playing=null;
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+function updatePlayButtons(){document.querySelectorAll('[data-act="play"]').forEach(b=>b.setAttribute('aria-pressed',playing&&playing.tid===b.dataset.tid?'true':'false'))}
+function stopPlay(){if(!playing)return;clearTimeout(playing.timer);playing.nodes.forEach(n=>{try{n.stop()}catch(_){}});playing=null;updatePlayButtons()}
+function playTrack(tid){
+  if(playing&&playing.tid===tid){stopPlay();return}
+  stopPlay();
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(_){toast(L('这个浏览器不能播放示例音频','This browser cannot play the sample audio'));return}
+  const t=trk(tid),beat=60/t.bpm,meter=t.meter;
+  const prog=[[48,[60,64,67]],[41,[60,65,69]],[43,[59,62,67]],[48,[60,64,67]]];
+  const bars=Math.max(2,Math.min(8,Math.floor(12/(meter*beat))));
+  const t0=actx.currentTime+0.06,nodes=[];
+  const note=(m,at,len,vol)=>{const o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.value=mtof(m);
+    g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(vol,at+0.015);g.gain.exponentialRampToValueAtTime(0.0001,at+len);
+    o.connect(g).connect(actx.destination);o.start(at);o.stop(at+len+0.05);nodes.push(o)};
+  for(let b=0;b<bars;b++){const [bass,ch]=prog[b%4];
+    for(let i=0;i<meter;i++){const at=t0+(b*meter+i)*beat;
+      if(i===0||(meter===6&&i===3))note(bass,at,beat*1.6,0.32);
+      else ch.forEach(m=>note(m,at,beat*0.7,0.09));}}
+  const dur=bars*meter*beat;
+  playing={tid,nodes,timer:setTimeout(()=>{playing=null;updatePlayButtons()},(dur+0.3)*1000)};
+  updatePlayButtons();
+  toast(L(`示例：${nm(t.title)}（${nm(t.ver)}）· 真实版播放老师上传的 mp3`,`Sample: ${nm(t.title)} (${nm(t.ver)}) · the real site plays the teacher's mp3`));
+}
+
+function gcalLink(l){const s=stu(l.sid);const f=d=>new Date(d).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(LL(s.lang,'钢琴课 · ','Piano lesson · ')+s.name)+'&dates='+f(l.date)+'/'+f(l.date+l.dur*6e4)+'&details='+encodeURIComponent(LL(s.lang,`第 ${l.n} 节 · 琴房`,`Lesson ${l.n} · Piano Studio`));}
+function ics(l){const s=stu(l.sid);const f=d=>new Date(d).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Piano Studio//ZH','METHOD:REQUEST','BEGIN:VEVENT',`UID:${l.id}@piano-studio`,`SEQUENCE:${l.changedFrom?1:0}`,`DTSTART:${f(l.date)}`,`DTEND:${f(l.date+l.dur*6e4)}`,`SUMMARY:${LL(s.lang,`钢琴课 · ${s.name}（第 ${l.n} 节）`,`Piano lesson · ${s.name} (lesson ${l.n})`)}`,`LOCATION:${LL(s.lang,'琴房','Piano Studio')}`,`ORGANIZER;CN=Teacher:mailto:teacher@example.com`,`ATTENDEE;RSVP=TRUE;PARTSTAT=ACCEPTED;CN=${s.name}:mailto:${mailTo(s)}`,'BEGIN:VALARM','TRIGGER:-PT2H','ACTION:DISPLAY',`DESCRIPTION:${LL(s.lang,'钢琴课 2 小时后开始','Piano lesson starts in 2 hours')}`,'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\n');}
+
+function langBtn(){return `<button class="btn sm lang" data-act="lang" aria-label="${L('Switch to English','切换到中文')}">${L('EN','中文')}</button>`}
+
+/* ---------- 页面：登录 ---------- */
+const DEMO_EMAILS=[['teacher@example.com',['老师','Teacher']],['lifamily@example.com',['Emma 的家长','Emma\'s parent']],['emma.li@example.com',['Emma（儿童）','Emma (child)']],['chen.family@example.com',['Lucas 和 Mia 的家长','Lucas & Mia\'s parent']],['lucas.chen@example.com',['Lucas（儿童）','Lucas (child)']],['zihan.wang@example.com',['王子涵','Zihan']],['sophia.z@example.com',['Sophia（成人）','Sophia (adult)']]];
+function enterAs(x){
+  if(x.r==='admin'){state.role='admin';state.sid=null;state.pid=null;state.tab='overview'}
+  else if(x.r==='parent'){state.role='parent';state.pid=x.id;state.sid=par(x.id).kids[0];state.tab='phome'}
+  else{state.role='student';state.sid=x.id;state.pid=null;state.tab='home'}
+  state.celebPending=true;window.scrollTo(0,0);
+}
+const matchLabel=x=>x.r==='admin'?[L('老师（管理员）','Teacher (admin)'),L('看全部学生','Sees all students'),state.teacher]
+  :x.r==='parent'?[L(`家长 · ${nm(par(x.id).name)}`,`Parent · ${nm(par(x.id).name)}`),par(x.id).kids.map(k=>stu(k).name).join(L('、',', ')),par(x.id)]
+  :[L(`学生 · ${stu(x.id).name}`,`Student · ${stu(x.id).name}`),nm(stu(x.id).level),stu(x.id)];
+function viewLogin(){
+  const A=state.auth;
+  const head=`<div class="login-h"><div style="display:flex;gap:12px;align-items:center">${logoHtml()}<div><h1 style="font-size:1.7rem">${L('琴房','Piano Studio')}</h1><p class="muted"><span class="work">${L('Piano Studio','琴房')}</span> · ${L('课程管理演示版','lesson manager demo')}</p></div></div>${langBtn()}</div>`;
+  let body='';
+  if(A.step==='email'){
+    body=`<form class="stack" id="login-email-form" style="gap:12px" novalidate>
+      <p class="small">${L('输入你的邮箱，我们会发一个 6 位验证码。不需要 Google 账号，任何邮箱都可以。','Enter your email and we\'ll send a 6-digit code. No Google account needed; any email works.')}</p>
+      <label class="f">${L('邮箱','Email')}<input type="email" id="login-email" value="${esc(A.email)}" placeholder="you@example.com" autocomplete="email"></label>
+      ${A.err?`<p class="err" role="alert">${esc(A.err)}</p>`:''}
+      <div class="btns"><button class="btn primary" type="submit">${L('发送验证码','Send code')}</button></div>
+    </form>
+    <div class="divider">${L('演示用邮箱，点一下填入','Demo emails · tap to fill in')}</div>
+    <div class="chips">${DEMO_EMAILS.map(([e,n])=>`<button class="chip" data-act="fill-email" data-email="${e}">${esc(nm(n))}</button>`).join('')}</div>`;
+  }else if(A.step==='code'){
+    body=`<p class="small">${L(`验证码已发到 <b>${esc(A.email)}</b>，10 分钟内有效，用一次就作废。`,`Code sent to <b>${esc(A.email)}</b>. It works for 10 minutes and only once.`)}</p>
+    <details open><summary class="small muted" style="cursor:pointer">${L('演示：这封邮件本来会发到你的邮箱','Demo: this email would arrive in your inbox')}</summary><div style="margin-top:8px">
+    ${mailMock(A.email,L(`琴房登录验证码：${A.code}`,`Piano Studio sign-in code: ${A.code}`),`<p>${L('你的登录验证码是','Your sign-in code is')}</p><p class="code-show">${A.code}</p><p class="small muted">${L('如果不是你本人在登录，忽略这封邮件就行。','If you didn\'t try to sign in, you can ignore this email.')}</p>`)}</div></details>
+    <form class="stack" id="login-code-form" style="gap:12px" novalidate>
+      <label class="f">${L('6 位验证码','6-digit code')}<input type="text" id="login-code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······"></label>
+      <label class="check"><input type="checkbox" id="login-remember" ${A.remember?'checked':''}>${L('在这台设备上记住我 90 天','Remember me on this device for 90 days')}</label>
+      ${A.err?`<p class="err" role="alert">${esc(A.err)}</p>`:''}
+      <div class="btns"><button class="btn primary" type="submit">${L('登录','Sign in')}</button><button class="btn" type="button" data-act="auth-resend">${L('重新发送','Resend')}</button><button class="btn link small" type="button" data-act="auth-back">${L('换个邮箱','Use another email')}</button></div>
+    </form>`;
+  }else{
+    body=`<p class="small">${L(`<b>${esc(A.email)}</b> 对应 ${A.matches.length} 个账户，选一个进入。`,`<b>${esc(A.email)}</b> matches ${A.matches.length} accounts. Pick one to continue.`)}</p>
+    ${A.matches.map(x=>{const [t,sub,o]=matchLabel(x);return `<button class="pick" data-act="login" data-r="${x.r}" data-id="${x.id||''}">${avatar(o)}<div class="grow"><b>${esc(t)}</b><div class="small muted">${esc(sub)}</div></div></button>`}).join('')}
+    <button class="btn link small" data-act="auth-back">${L('换个邮箱','Use another email')}</button>`;
+  }
+  return `<div class="wrap login"><div class="card">${head}${body}</div></div>`;
+}
+
+/* ---------- 外壳 ---------- */
+const ADMIN_TABS=[['overview',['总览','Overview']],['calendar',['日历','Calendar']],['students',['学生','Students']],['record',['记课','Log lesson']],['schedule',['排课','Schedule']],['notices',['通知','Notices']],['messages',['留言','Messages']],['library',['伴奏曲库','Accompaniments']],['resources',['资源','Resources']],['points',['积分','Points']],['flow',['提醒流程','Reminders']]];
+const STU_TABS=[['home',['我的主页','Home']],['learning',['正在学习','Learning']],['records',['学习记录','Lessons']],['homework',['作业','Homework']],['music',['伴奏','Accompaniments']],['portfolio',['作品集','Portfolio']],['uresources',['资源','Resources']],['unotices',['通知','Notices']],['umessages',['留言','Messages']],['mypoints',['我的积分','Points']]];
+const PAR_TABS=[['phome',['家庭总览','Family']],['learning',['正在学习','Learning']],['records',['学习记录','Lessons']],['homework',['作业','Homework']],['portfolio',['作品集','Portfolio']],['uresources',['资源','Resources']],['unotices',['通知','Notices']],['umessages',['留言','Messages']]];
+function tabBadge(k){
+  const n=k==='unotices'?unreadNotices():k==='umessages'?unreadMsgsU():k==='messages'?unreadMsgsT():0;
+  return n?`<span class="badge" aria-label="${L(`${n} 条未读`,`${n} unread`)}">${n}</span>`:'';
+}
+function currentUser(){return state.role==='admin'?state.teacher:state.role==='parent'?par(state.pid):stu(state.sid)}
+const DEMO_DAYS=[['',['真实今天','Real today']],['2026-10-31',['万圣节','Halloween']],['2026-11-26',['感恩节','Thanksgiving']],['2026-12-24',['圣诞节','Christmas']],['2027-01-01',['新年','New Year']],['2027-02-06',['春节','Lunar New Year']],['2027-02-14',['情人节','Valentine\'s']],['2027-04-12',['春季','Spring']],['2027-07-15',['夏季','Summer']],['2027-09-20',['秋季','Fall']],['2027-01-20',['冬季','Winter']]];
+function shell(inner){
+  let tabs=state.role==='admin'?ADMIN_TABS:state.role==='parent'?PAR_TABS:STU_TABS;
+  if(state.role==='student'&&!showPts(state.sid))tabs=tabs.filter(t=>t[0]!=='mypoints');
+  const u=currentUser();
+  const name=state.role==='admin'?`<b>${L('老师（管理员）','Teacher (admin)')}</b>`:state.role==='parent'?`<b>${esc(nm(u.name))}</b> <span class="muted">${L('家长','Parent')}</span>`:`<b>${esc(u.name)}</b>`;
+  const kids=state.role==='parent'?par(state.pid).kids.map(stu):[];
+  const viewing=(state.role==='parent'&&state.tab!=='phome')?`<div class="viewing"><span class="muted small">${L('正在看','Viewing')}</span>${kids.map(k=>`<button class="kid-chip" data-act="child" data-sid="${k.id}" aria-pressed="${k.id===state.sid}">${avatar(k,26)}${esc(k.name)}</button>`).join('')}</div>`:'';
+  return `<header class="bar"><div class="wrap">
+      <div class="brand">${logoHtml()}<div class="brand-t"><b>${L('琴房','Piano Studio')}</b><span>${L('Piano Studio','琴房')}</span></div></div>
+      <div class="who">${name}<button class="avbtn" data-act="av-open" aria-label="${L('更换头像','Change avatar')}">${avatar(u,32)}</button>${langBtn()}<button class="btn sm" data-act="logout">${L('退出登录','Sign out')}</button></div>
+    </div>
+    <div class="wrap"><nav class="tabs" aria-label="${L('页面','Pages')}">${tabs.map(([k,t])=>`<button class="tab" data-act="tab" data-tab="${k}" ${state.tab===k?'aria-current="page"':''}>${nm(t)}${tabBadge(k)}</button>`).join('')}</nav></div>
+  </header>
+  <div class="demo-note"><div class="wrap"><span>${L('演示版：数据都是示例，不会真的发邮件、改日历或上传文件。','Demo: all data is sample data. Nothing is emailed, added to a calendar or uploaded.')} <button class="btn link small" data-act="reset">${L('恢复示例数据','Reset sample data')}</button></span>
+    <label class="small" for="demo-day">${L('预览日期','Preview date')} <select id="demo-day">${DEMO_DAYS.map(([v,n])=>`<option value="${v}" ${(state.demoDay||'')===v?'selected':''}>${esc(nm(n))}${v?' · '+v:''}</option>`).join('')}</select></label></div></div>
+  <main class="wrap">${viewing?`<div class="stack">${viewing}<div class="stack">${inner}</div></div>`:inner}</main>`;
+}
+
+/* ---------- 老师：总览 ---------- */
+function adminOverview(){
+  const weekEnd=now.getTime()+7*DAY;
+  const upcoming=state.lessons.filter(l=>l.status==='scheduled'&&l.date<weekEnd).sort((a,b)=>a.date-b.date);
+  const unconfirmed=upcoming.filter(l=>!l.confirmedAt);
+  const unsigned=state.lessons.filter(l=>l.status==='done'&&!l.signedAt);
+  const dueT=state.students.filter(s=>tuition(s).due);
+  const overdue=state.assigns.filter(a=>!a.submittedAt&&now>a.due&&now-a.due<=state.rules.grace*DAY);
+  const av=s=>avatar(s);
+  const msgU=state.messages.filter(m=>m.from!=='teacher'&&!m.readT);
+  const todo=[
+    ...[...new Set(msgU.map(m=>m.sid))].map(sid=>{const s=stu(sid),last=msgU.filter(m=>m.sid===sid).slice(-1)[0];return `<div class="row">${av(s)}<div class="grow"><b>${esc(s.name)}</b> ${L('留言了','sent a message')}<div class="small muted">${esc(tx(last.text))}</div></div><span class="pill wait">${L('待回复','Needs reply')}</span><button class="btn sm" data-act="reply-go" data-sid="${sid}">${L('去回复','Reply')}</button></div>`}),
+    ...dueT.map(s=>{const t=tuition(s),pp=payerOf(s);return `<div class="row">${av(s)}<div class="grow"><b>${esc(s.name)}</b> ${L('本期 10 节已上完','used all 10 lessons this term')}<div class="small muted">${L(`共上 ${t.done} 节 · 已付 ${s.paid*10} 节 · 提醒发给：${pp===s?'本人':nm(pp.name)}`,`${t.done} lessons taken · ${s.paid*10} paid · reminder goes to: ${pp===s?'the student':nm(pp.name)}`)}</div></div>${s.claimed?`<span class="pill ok">${L('家长说已付款','Parent says paid')}</span>`:`<span class="pill bad">${L('学费待交','Tuition due')}</span>`}<div class="btns"><button class="btn sm" data-act="tuition-mail" data-sid="${s.id}">${L('发学费提醒','Send reminder')}</button><button class="btn sm" data-act="paid" data-sid="${s.id}">${L('记录已收款','Mark paid')}</button></div></div>`}),
+    ...unconfirmed.map(l=>{const s=stu(l.sid);return `<div class="row">${av(s)}<div class="grow"><b>${esc(s.name)}</b> ${L(`还没确认 ${fmtD(l.date)} 的课`,`hasn't confirmed ${fmtD(l.date)}`)}<div class="small muted">${l.remindedAt?L('上次提醒 ','Last reminded ')+fmtDT(l.remindedAt):L('还没发过提醒','No reminder sent yet')}</div></div><span class="pill wait">${L('待确认','Unconfirmed')}</span><button class="btn sm" data-act="remind" data-lid="${l.id}">${L('发提醒','Remind')}</button></div>`}),
+    ...unsigned.map(l=>{const s=stu(l.sid);return `<div class="row">${av(s)}<div class="grow"><b>${esc(s.name)}</b> ${L(`第 ${l.n} 节记录待签字`,`lesson ${l.n} not signed yet`)}<div class="small muted">${L(`${fmtD(l.date)} 上课 · 48 小时后自动确认`,`Lesson on ${fmtD(l.date)} · auto-confirms after 48 hours`)}</div></div><span class="pill wait">${L('待签字','Unsigned')}</span></div>`}),
+    ...overdue.map(a=>{const s=stu(a.sid);const st=hwStatus(a);return `<div class="row">${av(s)}<div class="grow"><b>${esc(s.name)}</b> ${L('作业没交','homework not in')}<div class="small muted">${esc(tx(a.title))}</div></div><span class="pill bad">${st.t}</span></div>`}),
+    ...state.assigns.filter(a=>a.yt==='failed').map(a=>{const s=stu(a.sid);return `<div class="row">${av(s)}<div class="grow"><b>${esc(s.name)}</b> ${L('的视频没能转存到 YouTube','— video didn\'t transfer to YouTube')}<div class="small muted">${esc(pieceName(a))} · ${L('上传中断，已自动重试 3 次。Drive 原件还在，不会被清理。','Upload interrupted; retried 3 times. The Drive original is kept and won\'t be cleaned up.')}</div></div><span class="pill bad">${L('转存失败','Transfer failed')}</span><button class="btn sm" data-act="yt-retry" data-aid="${a.id}">${L('重试','Retry')}</button></div>`})
+  ];
+  const cel=upcomingCelebs();
+  const celRows=cel.map(c=>{
+    const when=c.diff===0?L('今天','today'):c.diff===1?L('明天','tomorrow'):L(`${c.diff} 天后（${fmtD(c.d)}）`,`in ${c.diff} days (${fmtD(c.d)})`);
+    const what=c.k==='birthday'?L(`${c.years} 岁生日`,`${c.years}th birthday`):L(`学琴 ${c.years} 周年`,`${c.years}-year piano anniversary`);
+    const les=c.les?(dayDiff(c.les.date,c.d)===0?L(`正好是上课那天（${fmtT(c.les.date)}）`,`falls on a lesson day (${fmtT(c.les.date)})`):L(`${fmtD(c.les.date)} 有课，离这一天 ${Math.abs(dayDiff(c.les.date,c.d))} 天`,`lesson on ${fmtD(c.les.date)}, ${Math.abs(dayDiff(c.les.date,c.d))} days from it`)):'';
+    return `<div class="row">${avatar(c.s)}<div class="grow"><b>${esc(c.s.name)}</b> ${what}<div class="small muted">${when}</div>${les?`<div class="small"><span class="pill wait">${L('上课提醒','Lesson heads-up')}</span> ${les}</div>`:''}</div><span class="pill ${c.k==='birthday'?'ok':'plain'}">${c.k==='birthday'?'🎂':'🎹'}</span></div>`}).join('');
+  return `<div class="stack">
+    <div class="page-h"><h1>${L('总览','Overview')}</h1><span class="muted">${fmtD(now)}</span></div>
+    ${festBanner()}
+    <div class="stats">
+      <div class="stat"><b>${upcoming.length}</b><span>${L('未来 7 天的课','Lessons in the next 7 days')}</span></div>
+      <div class="stat ${unconfirmed.length?'flag':''}"><b>${unconfirmed.length}</b><span>${L('学生还没确认','Not confirmed yet')}</span></div>
+      <div class="stat ${msgU.length?'flag':''}"><b>${msgU.length}</b><span>${L('条留言待回复','Messages to answer')}</span></div>
+      <div class="stat ${dueT.length?'flag':''}"><b>${dueT.length}</b><span>${L('学费待交','Tuition due')}</span></div>
+    </div>
+    <div class="grid2">
+      <section class="card"><div class="card-h"><h2>${L('接下来的课','Upcoming lessons')}</h2><button class="btn sm" data-act="tab" data-tab="calendar">${L('打开日历','Open calendar')}</button></div>
+        <div class="rows">${upcoming.map(l=>{const s=stu(l.sid);return `<div class="row"><div class="when"><b>${rel(l.date)} ${fmtT(l.date)}</b><span>${fmtD(l.date)}</span></div><div class="grow"><b>${esc(s.name)}</b><div class="small muted">${L(`第 ${l.n} 节 · ${l.dur} 分钟`,`Lesson ${l.n} · ${l.dur} min`)} · ${calLabel(s.cal)}</div></div>${l.confirmedAt?`<span class="pill ok">✓ ${L('已确认','Confirmed')}</span>`:`<span class="pill wait">${L('待确认','Unconfirmed')}</span>`}</div>`}).join('')||`<p class="muted">${L('未来 7 天没有课。','No lessons in the next 7 days.')}</p>`}</div>
+      </section>
+      <section class="card"><div class="card-h"><h2>${L('需要处理','To do')}</h2><span class="small muted">${L(`${todo.length} 件`,`${todo.length} items`)}</span></div><div class="rows">${todo.join('')||`<p class="muted">${L('都处理完了。','All done.')}</p>`}</div></section>
+    </div>
+    <section class="card"><div class="card-h"><h2>${L('生日和周年纪念日','Birthdays and anniversaries')}</h2><span class="small muted">${L('未来 7 天；生日当天学生登录会看到庆祝动画','Next 7 days; students see a celebration when they sign in that day')}</span></div><div class="rows">${celRows||`<p class="muted">${L('未来 7 天没有。','None in the next 7 days.')}</p>`}</div></section>
+    <section class="card"><div class="card-h"><h2>${L('积分榜','Leaderboard')}</h2><button class="btn sm" data-act="tab" data-tab="points">${L('调整规则','Edit rules')}</button></div>${leaderboard()}</section>
+  </div>`;
+}
+function leaderboard(){
+  const rows=state.students.filter(s=>showPts(s.id)).map(s=>({s,t:total(s.id),l:ledger(s.id)})).sort((a,b)=>b.t-a.t);
+  const off=state.students.filter(s=>!showPts(s.id));
+  return `<div class="tbl"><table><thead><tr><th>${L('学生','Student')}</th><th class="r">${L('总积分','Points')}</th><th>${L('最近一条','Latest')}</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.s.name)}</b></td><td class="r pts num">${r.t}</td><td class="small">${r.l[0]?`${esc(r.l[0].label)} <span class="pts ${r.l[0].pts>=0?'pos':'neg'}">${signed(r.l[0].pts)}</span>`:'—'}</td></tr>`).join('')}</tbody></table></div>${off.length?`<p class="small muted">${L(`没有显示积分的学生：${off.map(s=>esc(s.name)).join('、')}`,`Points hidden for: ${off.map(s=>esc(s.name)).join(', ')}`)}</p>`:''}`;
+}
+
+/* ---------- 老师：学生 ---------- */
+function adminStudents(){
+  const s=stu(state.selStudent);
+  return `<div class="stack"><div class="page-h"><h1>${L('学生','Students')}</h1><span class="muted">${L(`${state.students.length} 位`,`${state.students.length} students`)}</span></div>
+  <div class="grid-side">
+    <section class="card" style="padding:8px">${state.students.map(x=>{const t=tuition(x);return `<button class="pick" style="border:0;background:${x.id===s.id?'var(--surface-2)':'transparent'}" data-act="sel" data-sid="${x.id}">${avatar(x)}<div class="grow"><b>${esc(x.name)}</b><div class="small muted num">${showPts(x.id)?L(`${t.used}/10 节 · ${total(x.id)} 分`,`${t.used}/10 lessons · ${total(x.id)} pts`):L(`${t.used}/10 节`,`${t.used}/10 lessons`)}</div></div>${t.due?`<span class="pill bad">${L('学费','Tuition')}</span>`:''}</button>`}).join('')}</section>
+    ${studentDetail(s)}
+  </div></div>`;
+}
+function studentDetail(s){
+  const t=tuition(s),nx=nextOf(s.id),ds=doneOf(s.id).slice(0,3),as=assignsOf(s.id).slice(0,4);
+  const pars=parentsOf(s.id),age=ageOf(s),sp=span(s),lr=learning(s.id),pp=payerOf(s);
+  const autoN=doneOf(s.id).length;
+  return `<div class="stack">
+    <section class="card"><div class="card-h"><div style="display:flex;gap:12px;align-items:center">${avatar(s,48)}<div><h2>${esc(s.name)}</h2><p class="small muted">${esc(nm(s.level))} · ${s.kind==='adult'?L('成人','Adult'):L('儿童','Child')}${age!=null?` · ${L(`${age} 岁`,`age ${age}`)}`:''} · ${esc(mailTo(s)||'—')}</p></div></div><span class="pill plain">${calLabel(s.cal)}</span></div>
+      <div class="grid2">
+        <div><p class="small muted">${L('本期学费进度（每 10 节一期）','Tuition progress (10 lessons per term)')}</p>${keyboard(t.used)}<p class="small num" style="margin-top:6px">${t.due?`<span class="pill bad">${L('已上满，待交下一期','Term used up · next term due')}</span>`:L(`还剩 ${t.left} 节`,`${t.left} lessons left`)}</p></div>
+        <div class="stack" style="gap:6px"><p class="small muted">${showPts(s.id)?L('总积分','Total points'):L('积分','Points')}</p>${showPts(s.id)?`<div class="big-pts num">${total(s.id)}</div>`:`<p class="muted">${L('已对该学生隐藏','Hidden for this student')}</p>`}<p class="small muted">${L('下节课：','Next lesson: ')}${nx?`${fmtDT(nx.date)} ${nx.confirmedAt?`<span class="pill ok">${L('已确认','Confirmed')}</span>`:`<span class="pill wait">${L('待确认','Unconfirmed')}</span>`}`:L('未排','not scheduled')}</p>
+        <div class="btns">${nx?`<button class="btn sm" data-act="cal-open" data-lid="${nx.id}">${L('调整时间','Change time')}</button>`:''}${nx&&!nx.confirmedAt?`<button class="btn sm" data-act="remind" data-lid="${nx.id}">${L('发上课提醒','Send lesson reminder')}</button>`:''}${t.due?`<button class="btn sm" data-act="tuition-mail" data-sid="${s.id}">${L('发学费提醒','Send tuition reminder')}</button><button class="btn sm" data-act="paid" data-sid="${s.id}">${L('记录已收款','Mark paid')}</button>`:''}</div></div>
+      </div>
+      <p class="small muted">${L('分组','Group')}：${esc(groupName(s.group))} · ${L('邮件语言','Email language')}：${langLabel(s.lang)}</p>
+    </section>
+
+    <section class="card"><div class="card-h"><h3>${L('账户和个人信息','Account and profile')}</h3><span class="small muted">${L('只有你和家长看得到生日','Only you and the family see the birthday')}</span></div>
+      <div class="form">
+        <label class="f">${L('学生类型（决定界面风格）','Type (decides the look)')}<select id="sf-kind" data-sf="kind"><option value="child" ${s.kind==='child'?'selected':''}>${L('儿童：卡通背景','Child: cartoon backgrounds')}</option><option value="adult" ${s.kind==='adult'?'selected':''}>${L('成人：淡雅背景','Adult: calm backgrounds')}</option></select></label>
+        <label class="f">${L('生日','Birthday')}<input type="date" id="sf-birth" data-sf="birth" value="${s.birth||''}"></label>
+        <label class="f">${L('开始学琴的日期','Piano start date')}<input type="date" id="sf-start" data-sf="start" value="${s.start||''}"></label>
+        <label class="f">${L('补记课节数（系统之外的课，可为负数）','Added lessons (outside the system; may be negative)')}<input type="number" id="sf-adj" data-sf="adj" value="${s.adj||0}" step="1" style="width:100%"></label>
+        <label class="check full"><input type="checkbox" id="sf-pts" data-sf="showPoints" ${s.showPoints!==false?'checked':''}>${L('给这位学生显示积分（成人学生可以关掉）','Show points to this student (turn off for adults)')}</label>
+      </div>
+      <dl class="kv2"><dt>${L('学琴时间','Learning for')}</dt><dd>${s.start?`${spanLabel(sp)} · ${L('开始于','since')} ${fmtYMD(s.start)}`:L('还没填开始日期','No start date yet')}</dd>
+        <dt>${L('总课时','Total lessons')}</dt><dd class="num">${L(`${totalLessons(s)} 节 = 系统记录 ${autoN} + 补记 ${s.adj||0}；约 ${totalHours(s).toFixed(1)} 小时`,`${totalLessons(s)} = ${autoN} logged + ${s.adj||0} added; about ${totalHours(s).toFixed(1)} hours`)}</dd>
+        <dt>${L('周年纪念日','Anniversary')}</dt><dd>${s.start?(()=>{const d=nextOcc(s.start,today()),y=d.getFullYear()-pymd(s.start).getFullYear();return y>=1?L(`${fmtD(d)}（第 ${y} 周年，${rel(d)}）`,`${fmtD(d)} (year ${y}, ${rel(d)})`):L('满一年后开始','Starts after the first year')})():'—'}</dd></dl>
+      ${s.kind==='child'?`<div class="opt-row"><span>${L('背景风格（孩子自己也可以在头像设置里改）','Background style (the child can also change it in avatar settings)')}</span><div class="chips"><button class="chip" data-act="stu-style" data-st="" aria-pressed="${!s.theme}">${L('按年龄自动','Auto by age')}</button>${Object.entries(STYLES).map(([k,v])=>`<button class="chip" data-act="stu-style" data-st="${k}" aria-pressed="${s.theme===k}">${nm(v.n)}</button>`).join('')}</div></div>`:''}
+      <div class="opt-row"><span>${L('配对的家长账户（家长看进度、作业，收学费提醒；孩子的账户不收学费提醒）','Paired parent accounts (parents see progress and homework and get tuition reminders; the child account does not)')}</span>
+        <div class="chips">${state.parents.map(p=>`<button class="chip" data-act="stu-par" data-pid="${p.id}" data-sid="${s.id}" aria-pressed="${p.kids.includes(s.id)}">${esc(nm(p.name))}</button>`).join('')}<button class="chip" data-act="par-new">${L('＋ 新建家长账户','＋ New parent account')}</button></div>
+        <p class="small muted">${pars.length?L(`学费提醒发给：${nm(pp.name)}（${pp.email}）`,`Tuition reminders go to: ${nm(pp.name)} (${pp.email})`):L('还没配对家长：这位学生自己收学费提醒。','No parent paired: this student gets tuition reminders themselves.')}${s.email?'':' '+L('这位孩子没有自己的邮箱，只用家长账户登录。','This child has no email of their own and is reached through the parent account.')}</p></div>
+    </section>
+
+    <section class="card"><div class="card-h"><h3>${L('正在学习的教材和曲目','Books and pieces in progress')}</h3><span class="small muted">${L('曲目从记课里自动归纳，教材由你维护','Pieces come from your lesson logs; you maintain the books')}</span></div>
+      <div class="chips" style="gap:8px">${(s.books||[]).map((b,i)=>`<span class="pbook">${esc(nm(b.n))} <span class="pill ${b.s==='current'?'wait':'plain'}">${b.s==='current'?L('在学','Current'):L('学完','Done')}</span>${b.s==='current'?`<button class="btn link small" data-act="book-done" data-sid="${s.id}" data-i="${i}">${L('标为学完','Mark done')}</button>`:''}<button class="btn link small" data-act="book-del" data-sid="${s.id}" data-i="${i}" aria-label="${L('移除','Remove')}">×</button></span>`).join('')||`<span class="muted small">${L('还没有教材','No books yet')}</span>`}</div>
+      <form class="btns" id="book-form"><input type="text" id="book-name" placeholder="${L('新教材名，例如 小汤 4','New book, e.g. Thompson 4')}" style="max-width:260px"><button class="btn sm" type="submit">${L('加入“在学”','Add as current')}</button></form>
+      <p class="small muted">${L(`现在在学的曲目 ${lr.cur.length} 首，学过的 ${lr.past.length} 首。`,`${lr.cur.length} pieces in progress, ${lr.past.length} finished.`)}</p>
+    </section>
+
+    <section class="card"><div class="card-h"><h3>${L('最近的课','Recent lessons')}</h3><span class="small muted">${L(`共 ${t.done} 节`,`${t.done} in total`)}</span></div>${ds.map(l=>lessonBlock(l,false)).join('')}</section>
+    <section class="card"><h3>${L('最近的作业','Recent homework')}</h3><div class="rows">${as.map(a=>{const st=hwStatus(a);return `<div class="row"><div class="grow"><span class="work">${esc(pieceName(a))}</span><div class="small muted">${esc(tx(a.title))} · ${L('截止','due')} ${fmtD(a.due)}</div>${a.acc&&a.acc.length?`<div class="small muted">${L(`附带伴奏 ${a.acc.length} 首`,`${a.acc.length} accompaniment${a.acc.length>1?'s':''}`)} · ${accKeepLabel(a)}</div>`:''}</div><span class="pill ${st.k}">${st.t}</span></div>`}).join('')}</div></section>
+    ${(()=>{const v=visibleTracks(s.id);return `<section class="card"><div class="card-h"><h3>${L('能听到的伴奏','Accompaniments this student can hear')}</h3><button class="btn sm" data-act="tab" data-tab="library">${L('管理曲库','Manage libraries')}</button></div>
+      <div>${v.length?v.map(x=>trackRow(x,{note:x.a?L(`随作业解锁 · ${accKeepLabel(x.a)}`,`Unlocked by homework · ${accKeepLabel(x.a)}`):L(`曲库开放：${nm(colOf(x.t.cid).name)}`,`Library open: ${nm(colOf(x.t.cid).name)}`),admin:true})).join(''):`<p class="muted small">${L('现在没有能听的伴奏。','Nothing available right now.')}</p>`}</div></section>`})()}
+  </div>`;
+}
+function lessonBlock(l,canSign){
+  const n=l.notes,tr=LANG==='en'&&Array.isArray(n.f);
+  return `<div class="lesson"><div class="no num">${l.n}<small>${fmtD(l.date)}</small></div><div>
+    ${pieceList(n.p)}
+    <dl class="kv"><dt>${L('重点','Focus')}</dt><dd>${esc(tx(n.f))}</dd><dt>${L('速度','Tempo')}</dt><dd class="work" style="font-style:normal">${esc(n.t)}</dd><dt>${L('作业','Homework')}</dt><dd>${esc(tx(n.hw))}</dd><dt>${L('签字','Signed')}</dt><dd>${l.signedAt?`<span class="pill ok">✓ ${fmtDT(l.signedAt)}</span>`:canSign?`<button class="btn sm primary" data-act="sign" data-lid="${l.id}">${L('确认签字','Sign')}</button>`:`<span class="pill wait">${L('待学生签字','Waiting for student')}</span>`}</dd></dl>
+    ${tr?`<div class="btns" style="margin-top:6px">${state.showOrig?'<span class="mt">Original (teacher\'s notes)</span>':'<span class="mt">Auto-translated</span>'}<button class="btn link small" data-act="orig">${state.showOrig?'Show translation':'Show original'}</button></div>`:''}
+  </div></div>`;
+}
+
+/* ---------- 老师：日历 ---------- */
+function adminCalendar(){
+  const ws=new Date(state.calWeek),we=new Date(ws.getTime()+7*DAY+3*HOUR),H0=8,H1=21,HH=46;
+  const ev=[];
+  state.lessons.forEach(l=>{if(l.date>=+ws&&l.date<+we-3*HOUR)ev.push({k:l.status==='done'?'done':'sched',l,sid:l.sid,date:new Date(l.date),dur:l.dur})});
+  state.students.forEach(s=>{for(let i=0;i<7;i++){const d=new Date(ws);d.setDate(d.getDate()+i);if(d.getDay()===s.wd){d.setHours(s.h,s.m,0,0);
+    if(d>now&&!state.lessons.some(l=>l.sid===s.id&&l.status==='scheduled'&&Math.abs(l.date-d)<2*DAY))ev.push({k:'proj',sid:s.id,date:d,dur:s.dur})}}});
+  const cols=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(ws);d.setDate(d.getDate()+i);
+    const dayEv=ev.filter(e=>dayDiff(e.date,d)===0);
+    const isToday=dayDiff(d,now)===0;
+    cols.push(`<div class="cal-hd ${isToday?'today':''}">${L(WD_ZH[d.getDay()],WD_EN[d.getDay()])}<br><span class="num">${d.getMonth()+1}/${d.getDate()}</span></div>`);
+    cols[i]=[cols[i],`<div class="cal-col" style="height:${(H1-H0)*HH}px;background:repeating-linear-gradient(to bottom,transparent 0,transparent ${HH-1}px,var(--line) ${HH-1}px,var(--line) ${HH}px)">${dayEv.map(e=>{
+      const s=stu(e.sid),top=Math.max(0,((e.date.getHours()+e.date.getMinutes()/60)-H0)*HH),h=Math.max(22,e.dur/60*HH-2);
+      const att=e.k==='proj'?`data-act="cal-proj" data-sid="${e.sid}" data-ts="${+e.date}"`:`data-act="cal-open" data-lid="${e.l.id}"`;
+      const flag=e.k==='sched'&&!e.l.confirmedAt?` · ${L('待确认','unconfirmed')}`:e.k==='proj'?` · ${L('常规','regular')}`:'';
+      return `<button class="ev ${e.k}" style="--c:${stuColor(e.sid)};top:${top}px;height:${h}px" ${att} aria-label="${esc(s.name)} ${fmtDT(e.date)}"><b>${esc(s.name.split(' ')[0])}</b> ${fmtT(e.date)}${h>36?`<br>${e.dur} ${L('分钟','min')}${flag}`:''}</button>`}).join('')}</div>`];
+  }
+  const times=Array.from({length:H1-H0+1},(_,i)=>`<span style="top:${i*HH}px">${pad(H0+i)}:00</span>`).join('');
+  const last=new Date(ws);last.setDate(last.getDate()+6);
+  return `<div class="stack"><div class="page-h"><h1>${L('日历','Calendar')}</h1><div class="cal-nav"><button class="btn sm" data-act="cal-prev" aria-label="${L('上一周','Previous week')}">‹</button><b class="num">${fmtD(ws)} – ${fmtD(last)}</b><button class="btn sm" data-act="cal-next" aria-label="${L('下一周','Next week')}">›</button><button class="btn sm" data-act="cal-today">${L('回到本周','This week')}</button></div></div>
+    <div class="cal-scroll"><div class="cal"><div class="cal-hd"></div>${cols.map(c=>c[0]).join('')}
+      <div class="cal-times" style="height:${(H1-H0)*HH}px;grid-column:1;grid-row:2">${times}</div>${cols.map(c=>c[1]).join('')}</div></div>
+    <div class="legend">${state.students.map(s=>`<span><i style="--c:${stuColor(s.id)}"></i>${esc(s.name)}</span>`).join('')}<span>${L('实线 = 已排的课，浅色 = 上过的课，虚线 = 常规时段（点一下就能排）','Solid = scheduled, faded = past, dashed = regular slot (tap to schedule)')}</span></div>
+    <p class="small muted">${L('点一节课可以改时间。保存时学生和家长会收到一条通知和更新后的日历邀请，学生需要重新确认。','Tap a lesson to change its time. The student and parent get a notice and an updated calendar invite, and the student confirms again.')}</p></div>`;
+}
+function modalResched(){
+  const R=state.rs,s=stu(R.sid),d=new Date(R.date);
+  const dl=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `<div class="card-h"><div><h2>${R.lid?L('调整上课时间','Change lesson time'):L('排这一节课','Schedule this lesson')}</h2><p class="small muted">${esc(s.name)}${R.lid?` · ${L('现在是','now')} ${fmtDT(R.date)}`:''}</p></div><button class="btn sm" data-act="close">${L('关闭','Close')}</button></div>
+  <div class="form"><label class="f">${L('新的日期和时间','New date and time')}<input type="datetime-local" id="rs-dt" value="${dl}"></label>
+    <label class="f">${L('时长（分钟）','Length (minutes)')}<select id="rs-dur">${[30,45,60].map(x=>`<option ${x===R.dur?'selected':''}>${x}</option>`).join('')}</select></label></div>
+  <label class="check"><input type="checkbox" id="rs-notify" checked>${L('通知学生和家长，并发更新后的日历邀请','Notify the student and parent, and send an updated calendar invite')}</label>
+  <p class="small muted">${L(`${esc(s.name)} 会收到：站内通知、邮件（按 ${langLabel(s.lang)}）、更新后的日历邀请（Google 和 Apple 日历会自动改时间），课前 24 小时和 2 小时的提醒照常。`,`${esc(s.name)} gets an in-site notice, an email (in ${langLabel(s.lang)}), and an updated calendar invite that moves the event in Google and Apple calendars. The 24-hour and 2-hour reminders still run.`)}</p>
+  <div class="btns"><button class="btn primary" data-act="rs-save">${L('保存','Save')}</button><button class="btn" data-act="close">${L('取消','Cancel')}</button></div>`;
+}
+
+/* ---------- 老师：通知 ---------- */
+const AUD_LABEL={both:['学生和家长','Student and parent'],student:['只发学生','Student only'],parent:['只发家长','Parent only']};
+function adminNotices(){
+  const list=[...state.notices].sort((a,b)=>b.ts-a.ts);
+  return `<div class="stack"><div class="page-h"><h1>${L('通知','Notices')}</h1><span class="muted">${L('学生和家长的“通知”页都会显示','Shown on the Notices page of students and parents')}</span></div>
+  <div class="grid2">
+    <form class="card" id="notice-form"><h3>${L('发一条通知','Send a notice')}</h3><div class="form">
+      <label class="f">${L('发给','To')}<select id="nt-to"><option value="all">${L('全体学生和家长','All students and parents')}</option>${state.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></label>
+      <label class="f">${L('谁能看到','Who sees it')}<select id="nt-aud">${Object.entries(AUD_LABEL).map(([k,v])=>`<option value="${k}">${nm(v)}</option>`).join('')}</select></label>
+      <label class="f full">${L('标题','Title')}<input type="text" id="nt-title" placeholder="${L('例如：下周一停课一次','e.g. No lessons next Monday')}"></label>
+      <label class="f full">${L('内容','Message')}<textarea id="nt-body"></textarea></label></div>
+      <div class="btns"><button class="btn primary" type="submit">${L('发送','Send')}</button></div>
+      <p class="small muted">${L('选“全体”时，学生和家长都会收到。发给某位学生时，可以选只发学生、只发家长，或者都发。','"All" reaches every student and parent. For one student you can choose student only, parent only, or both.')}</p></form>
+    <section class="card"><h3>${L('已发出的通知','Sent notices')}</h3><div class="rows">${list.map(n=>`<div class="row"><div class="grow"><b>${esc(tx(n.title))}</b><div class="small muted">${fmtDT(n.ts)} · ${n.to.scope==='all'?L('全体','Everyone'):esc(stu(n.to.sid).name)} · ${nm(AUD_LABEL[n.aud])}</div><div class="small">${esc(tx(n.body))}</div></div></div>`).join('')}</div></section>
+  </div></div>`;
+}
+function userNotices(){
+  const list=myNotices();
+  return `<div class="stack"><div class="page-h"><h1>${L('通知','Notices')}</h1><span class="muted">${L('来自老师','From your teacher')}</span></div>
+  ${list.map(n=>`<section class="card notice"><div class="notice-h"><h3>${esc(tx(n.title))}</h3>${state.fresh.n.has(n.id)?`<span class="pill bad">${L('新','New')}</span>`:''}<span class="small muted">${fmtDT(n.ts)}</span></div>
+    ${state.role==='parent'&&n.to.scope==='student'?`<span class="small"><span class="pill plain">${L('给','For')} ${esc(stu(n.to.sid).name)}</span></span>`:''}
+    <p>${esc(tx(n.body))}</p></section>`).join('')||`<section class="card"><p class="muted">${L('还没有通知。','No notices yet.')}</p></section>`}
+  ${LANG==='en'&&list.some(n=>Array.isArray(n.title))?`<div class="btns"><span class="mt">${state.showOrig?'Original (teacher\'s notes)':'Auto-translated'}</span><button class="btn link small" data-act="orig">${state.showOrig?'Show translation':'Show original'}</button></div>`:''}
+  </div>`;
+}
+
+/* ---------- 留言 ---------- */
+function adminMessages(){
+  const sids=state.students.map(s=>s.id);
+  const sel=state.msgSel||sids[0],s=stu(sel);
+  const unread=sid=>state.messages.filter(m=>m.sid===sid&&m.from!=='teacher'&&!m.readT).length;
+  const lastOf=sid=>msgsOf(sid).slice(-1)[0];
+  return `<div class="stack"><div class="page-h"><h1>${L('留言','Messages')}</h1><span class="muted">${L('学生和家长的留言；你回复后他们会收到提醒','Messages from students and parents; they are alerted when you reply')}</span></div>
+  <div class="grid-side">
+    <section class="card" style="padding:8px">${sids.map(id=>{const x=stu(id),u=unread(id),l=lastOf(id);return `<button class="pick" style="border:0;background:${id===sel?'var(--surface-2)':'transparent'}" data-act="sel-msg" data-sid="${id}">${avatar(x)}<div class="grow"><b>${esc(x.name)}</b><div class="small muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l?esc(tx(l.text)):L('还没有留言','No messages')}</div></div>${u?`<span class="badge">${u}</span>`:''}</button>`}).join('')}</section>
+    <section class="card"><div class="card-h"><h2>${esc(s.name)}</h2><span class="small muted">${L('家长也能看到孩子和老师的留言','Parents can see their child\'s messages with you')}</span></div>
+      ${bubbles(sel,'teacher')}
+      <form class="stack" id="msg-reply-form" style="gap:8px"><label class="f">${L('回复','Reply')}<textarea id="msg-text" style="min-height:64px"></textarea></label><div class="btns"><button class="btn primary" type="submit">${L('发送回复','Send reply')}</button></div></form></section>
+  </div></div>`;
+}
+function userMessages(){
+  const s=stu(state.sid);
+  return `<div class="stack"><div class="page-h"><h1>${L('给老师留言','Message the teacher')}</h1><span class="muted">${esc(s.name)}</span></div>
+  <section class="card">${bubbles(s.id,state.role)}
+    <form class="stack" id="umsg-form" style="gap:8px"><label class="f">${L('写给老师','Write to the teacher')}<textarea id="umsg-text" style="min-height:64px" placeholder="${L('例如：这首曲子第 3 小节弹不顺，怎么练？','e.g. I can\'t play bar 3 smoothly. How should I practice it?')}"></textarea></label><div class="btns"><button class="btn primary" type="submit">${L('发送','Send')}</button></div></form>
+    <p class="small muted">${L('老师收到留言会有提醒，并回复在这里。家长账户和孩子账户看到的是同一份留言。','The teacher is alerted and replies here. The parent and child accounts see the same thread.')}</p></section></div>`;
+}
+
+/* ---------- 资源 ---------- */
+const IC_DOC='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>';
+function resCard(r,admin){
+  const dl=r.kind==='file'?'':'';
+  return `<div class="res"><div class="res-ic">${IC_DOC}</div><div class="grow"><b>${esc(tx(r.title))}</b><div class="small muted">${esc(tx(r.desc||''))}</div>${admin?`<div class="small muted">${L('可见：','Visible to: ')}${esc(accessSummary(r))}</div>`:''}</div>
+    <div class="btns">${r.interactive?`<button class="btn sm primary" data-act="res-fill">${L('在线填写','Fill in online')}</button>`:''}<button class="btn sm" data-act="res-dl" data-rid="${r.id}">${L('下载','Download')}</button></div></div>`;
+}
+function adminResources(){
+  const Rs=state.resources,r=Rs.find(x=>x.id===state.selRes)||Rs[0];
+  let who='';
+  if(r.mode==='groups')who=`<div class="chips">${GROUPS.map(([g,n])=>`<button class="chip" data-act="res-grp" data-g="${g}" aria-pressed="${r.groups.includes(g)}">${esc(nm(n))}</button>`).join('')}</div>`;
+  else if(r.mode==='students')who=`<div class="chips">${state.students.map(s=>`<button class="chip" data-act="res-stu" data-sid="${s.id}" aria-pressed="${r.students.includes(s.id)}">${esc(s.name)}</button>`).join('')}</div>`;
+  const RM=[['all',['所有学生','All students']],['groups',['指定分组','By group']],['students',['指定学生','Chosen students']]];
+  return `<div class="stack"><div class="page-h"><h1>${L('资源','Resources')}</h1><span class="muted">${L('练习纸和作业纸：学生可以下载、打印，或在线完成','Worksheets: students can download, print, or fill in online')}</span></div>
+  <form class="card" id="res-form"><h3>${L('上传一份新资源','Upload a new resource')}</h3><div class="form">
+    <label class="f">${L('名称','Name')}<input type="text" id="res-title" placeholder="${L('例如：C 大调音阶练习纸','e.g. C major scale worksheet')}"></label>
+    <label class="f">${L('文件（PDF 或图片）','File (PDF or image)')}<input type="file" id="res-file" accept=".pdf,image/*"></label>
+    <label class="f full">${L('说明','Description')}<input type="text" id="res-desc"></label></div>
+    <div class="btns"><button class="btn primary" type="submit">${L('上传','Upload')}</button><span class="small muted">${L('真实版放进你 Drive 的“资源”文件夹；新上传的默认只有你看得到，选好对象后才开放。','On the real site files go to a Resources folder in your Drive. New uploads start visible only to you until you choose who sees them.')}</span></div></form>
+  <div class="grid-side">
+    <section class="card" style="padding:8px">${Rs.map(x=>`<button class="pick col-pick" style="border:0;background:${x.id===r.id?'var(--surface-2)':'transparent'}" data-act="sel-res" data-rid="${x.id}"><b>${esc(tx(x.title))}</b><span class="small muted">${esc(accessSummary(x))}</span></button>`).join('')}</section>
+    <section class="card"><div class="card-h"><h2>${esc(tx(r.title))}</h2></div>${resCard(r,true)}
+      <div class="opt-row"><span>${L('谁能看到','Who can see it')}</span><div class="chips">${RM.map(([m,n])=>`<button class="chip" data-act="res-mode" data-mode="${m}" aria-pressed="${r.mode===m}">${nm(n)}</button>`).join('')}</div>${who}</div>
+      <p class="small muted">${L('例：把“节奏型练习纸”只开放给 Emma 和 Lucas，或者把成人读谱小抄只给成人学生。','For example, open the rhythm worksheet only to Emma and Lucas, or the sight-reading sheet only to adult students.')}</p></section>
+  </div></div>`;
+}
+function userResources(){
+  const s=stu(state.sid),list=state.resources.filter(r=>colOpenTo(r,s)).sort((a,b)=>b.added-a.added);
+  return `<div class="stack"><div class="page-h"><h1>${L('资源','Resources')}</h1><span class="muted">${L('老师为你准备的练习纸','Worksheets your teacher prepared for you')}</span></div>
+  <section class="card">${list.map(r=>resCard(r,false)).join('')||`<p class="muted">${L('老师还没有给你准备资源。','Nothing here yet.')}</p>`}</section>
+  <p class="small muted">${L('下载后可以打印；“在线填写”的练习可以直接在页面里完成，再保存成图片。','Download to print. Worksheets marked "Fill in online" can be completed on this page and saved as an image.')}</p></div>`;
+}
+
+/* ---------- 老师：积分（规则 + 兑换） ---------- */
+
+/* ---------- 老师：记课 ---------- */
+function adminRecord(){
+  const opts=state.students.map(s=>`<option value="${s.id}" ${s.id==='zihan'?'selected':''}>${esc(s.name)}</option>`).join('');
+  const d=new Date(now);d.setMinutes(0,0,0);const dl=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+  const due=new Date(now.getTime()+6*DAY);const dd=`${due.getFullYear()}-${pad(due.getMonth()+1)}-${pad(due.getDate())}`;
+  return `<div class="stack"><div class="page-h"><h1>${L('记课','Log a lesson')}</h1><span class="muted">${L('课后填写，保存后学生会收到签字请求','Fill in after class; the student gets a request to sign')}</span></div>
+  <div class="grid2">
+  <form class="card" id="rec-form"><p class="small muted">${L('下面是示例内容，可以直接改了试。','Sample content below; edit it and try.')}</p><div class="form">
+    <label class="f">${L('学生','Student')}<select id="rec-student">${opts}</select></label>
+    <label class="f">${L('上课时间','Lesson time')}<input type="datetime-local" id="rec-date" value="${dl}"></label>
+    <label class="f full">${L('曲目（每行一首：曲名 | 出处 | 新曲/巩固/完成）','Pieces (one per line: title | source | new/review/done)')}<textarea id="rec-pieces">${L('托卡塔 | Kabalevsky Op. 39 No. 18 | 巩固\nD 大调音阶 两个八度 | 音阶 | 新曲','Toccata | Kabalevsky Op. 39 No. 18 | review\nD major scale, 2 octaves | Scales | new')}</textarea></label>
+    <label class="f full">${L('本节重点','Focus')}<input type="text" id="rec-focus" value="${L('和弦转换已经顺了，第 13–20 小节力度层次再拉开','Chord changes are smooth now; widen the dynamics in bars 13–20')}"></label>
+    <label class="f">${L('速度','Tempo')}<input type="text" id="rec-tempo" value="♩ = 132"></label>
+    <label class="f">${L('作业截止','Homework due')}<input type="date" id="rec-due" value="${dd}"></label>
+    <label class="f full">${L('作业','Homework')}<input type="text" id="rec-hw" value="${L('Kabalevsky 全曲录一遍；D 大调音阶每天 5 遍','Record the whole Kabalevsky; D major scale 5 times a day')}"></label>
+    <div class="f full">${L('附带伴奏（可多选，学生在这条作业里就能听）','Attach accompaniments (pick any; the student hears them in this homework)')}
+      <div class="picklist">${state.library.cols.map(c=>`<div class="grp">${esc(nm(c.name))} · ${esc(accessSummary(c))}</div>${tracksIn(c.id).map(t=>`<label><input type="checkbox" name="rec-acc" id="rec-acc-${t.id}" value="${t.id}">${esc(nm(t.title))} <span class="muted small">${esc(nm(t.ver))}</span></label>`).join('')}`).join('')}</div>
+    </div>
+    <label class="f full">${L('伴奏什么时候收回','When to remove the accompaniments')}<select id="rec-acc-keep"><option value="keep">${L('截止后一直保留','Keep after the due date')}</option><option value="7" selected>${L('截止 7 天后收回','Remove 7 days after the due date')}</option><option value="0">${L('截止当天收回','Remove on the due date')}</option></select></label>
+  </div><div class="btns"><button class="btn primary" type="submit">${L('保存并请学生签字','Save and ask student to sign')}</button></div></form>
+  <section class="card"><h3>${L('保存后会发生什么','What happens after saving')}</h3><div class="steps">
+    <div class="step"><div><b>${L('记录存进表格','The record goes into the spreadsheet')}</b><span class="small muted">${L('Google Sheets 里多一行，学生的“学习记录”页马上能看到。','A new row in Google Sheets; it shows up on the student\'s Lessons page right away.')}</span></div></div>
+    <div class="step"><div><b>${L('学生收到签字邮件','The student gets a sign-off email')}</b><span class="small muted">${L(`点“确认签字”就算签了，系统记下时间和账号。签字 +${state.rules.sign} 分。`,`Tapping "Sign" records the time and account. Signing earns +${state.rules.sign}.`)}</span></div></div>
+    <div class="step"><div><b>${L('作业开始计时，伴奏随作业解锁','Homework clock starts; accompaniments unlock')}</b><span class="small muted">${L(`学生收到作业邮件，里面有专属上传链接和勾选的伴奏。截止前上传视频 +${state.rules.ontime} 分，迟交 ${signed(state.rules.late)} 分。`,`The student gets a homework email with a private upload link and the chosen accompaniments. On time +${state.rules.ontime}, late ${signed(state.rules.late)}.`)}</span></div></div>
+    <div class="step"><div><b>${L('学费计数加一','Tuition count goes up by one')}</b><span class="small muted">${L('上满 10 节时，“需要处理”里出现学费提醒。','After 10 lessons, a tuition reminder appears in To do.')}</span></div></div>
+  </div>
+  <p class="small muted">${L('你用中文或英文写都可以。英文界面的学生会看到自动翻译，可以点“看原文”。','Write in Chinese or English. Students using the other language see an automatic translation and can tap to see your original.')}</p></section></div></div>`;
+}
+
+/* ---------- 老师：伴奏曲库 ---------- */
+const MODES=[['all',['所有学生','All students']],['groups',['指定分组','By group']],['students',['指定学生','Chosen students']],['hidden',['不公开，只随作业','Hidden, homework only']]];
+function adminLibrary(){
+  const Lb=state.library,c=colOf(state.selCol)||Lb.cols[0];
+  const list=Lb.cols.map(x=>`<button class="pick col-pick" style="border:0;background:${x.id===c.id?'var(--surface-2)':'transparent'}" data-act="sel-col" data-cid="${x.id}"><b>${esc(nm(x.name))}</b><span class="small muted num">${L(`${tracksIn(x.id).length} 首`,`${tracksIn(x.id).length} tracks`)} · ${esc(accessSummary(x))}</span></button>`).join('');
+  let who='';
+  if(c.mode==='groups')who=`<div class="chips">${GROUPS.map(([g,n])=>`<button class="chip" data-act="col-grp" data-g="${g}" aria-pressed="${c.groups.includes(g)}">${esc(nm(n))}</button>`).join('')}</div>`;
+  else if(c.mode==='students')who=`<div class="chips">${state.students.map(s=>`<button class="chip" data-act="col-stu" data-sid="${s.id}" aria-pressed="${c.students.includes(s.id)}">${esc(s.name)}</button>`).join('')}</div>`;
+  else if(c.mode==='hidden')who=`<p class="callout small">${L('这个曲库不单独开放。只有你在记课时勾进作业的伴奏，才会出现在那位学生的作业里，到期自动收回。','This library is not open on its own. Only tracks you attach to a homework show up for that student, and they are removed on schedule.')}</p>`;
+  else who=`<p class="small muted">${L('每位学生都能在“伴奏”页看到这个曲库。','Every student sees this library on their Accompaniments page.')}</p>`;
+  const tr=tracksIn(c.id);
+  const matrix=`<div class="tbl"><table class="matrix"><thead><tr><th>${L('学生','Student')}</th>${Lb.cols.map(x=>`<th>${esc(nm(x.name))}</th>`).join('')}</tr></thead><tbody>${state.students.map(s=>`<tr><td><b>${esc(s.name)}</b> <span class="small muted">${esc(groupName(s.group))}</span></td>${Lb.cols.map(x=>{
+      if(colOpenTo(x,s))return`<td><span class="mx-on" aria-label="${L('整个曲库开放','Whole library open')}">✓</span></td>`;
+      const n=new Set(state.assigns.filter(a=>a.sid===s.id&&accActive(a)).flatMap(a=>a.acc).filter(id=>trk(id).cid===x.id)).size;
+      return n?`<td><span class="mx-hw">${L(`随作业 ${n} 首`,`${n} via homework`)}</span></td>`:'<td><span class="mx-off">—</span></td>';
+    }).join('')}</tr>`).join('')}</tbody></table></div>`;
+  return `<div class="stack"><div class="page-h"><h1>${L('伴奏曲库','Accompaniment libraries')}</h1><span class="muted">${L('文件放在你的 Drive，不共享给任何人；学生点播放时网站先查权限','Files stay in your Drive, unshared; the site checks access when a student taps play')}</span></div>
+  <div class="grid-side">
+    <section class="card" style="padding:8px">${list}<p class="small muted" style="padding:8px 12px 4px">${L('在 Drive 的“伴奏曲库”里新建一个子文件夹，就多一个曲库。','Add a subfolder under "Accompaniments" in Drive to create a new library.')}</p></section>
+    <div class="stack">
+      <section class="card">
+        <div class="card-h"><div><h2>${esc(nm(c.name))}</h2><p class="small muted">${esc(nm(c.desc))}</p></div><button class="btn sm" data-act="sync">${L('从 Drive 同步','Sync from Drive')}</button></div>
+        <p class="path">Drive › ${L('伴奏曲库','Accompaniments')} › <b>${esc(nm(c.name))}</b></p>
+        <div class="opt-row"><span>${L('谁能看到','Who can see it')}</span><div class="chips">${MODES.map(([m,n])=>`<button class="chip" data-act="col-mode" data-mode="${m}" aria-pressed="${c.mode===m}">${esc(nm(n))}</button>`).join('')}</div>${who}</div>
+        <label class="check"><input type="checkbox" id="col-dl-${c.id}" data-col-dl="${c.id}" ${c.download?'checked':''}>${L('允许学生下载（不勾就只能在线播放）','Let students download (otherwise stream only)')}</label>
+        <div>${tr.map(t=>trackRow({t,col:true,a:null},{admin:true,note:''})).join('')}</div>
+      </section>
+      <section class="card"><div class="card-h"><h3>${L('每位学生能看到什么','What each student can see')}</h3><span class="small muted">${L('✓ 整个曲库 · 随作业 = 只有作业里勾的几首','✓ whole library · via homework = only attached tracks')}</span></div>${matrix}
+        <p class="small muted">${L('规则：曲库对他开放，或者他当前的作业里附带了，满足任意一条就能听。收回只要改这里的设置，立刻生效。','Rule: a student can listen if the library is open to them or a current homework includes the track. Changing a setting here takes effect immediately.')}</p></section>
+    </div>
+  </div></div>`;
+}
+
+/* ---------- 老师：排课 ---------- */
+function adminSchedule(){
+  const opts=state.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  const d=new Date(now.getTime()+3*DAY);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const up=state.lessons.filter(l=>l.status==='scheduled').sort((a,b)=>a.date-b.date);
+  return `<div class="stack"><div class="page-h"><h1>${L('排课','Schedule')}</h1><span class="muted">${L('排好后自动发确认邮件','A confirmation email goes out automatically')}</span></div>
+  <div class="grid2">
+  <form class="card" id="sch-form"><div class="form">
+    <label class="f full">${L('学生','Student')}<select id="sch-student">${opts}</select></label>
+    <label class="f">${L('日期','Date')}<input type="date" id="sch-date" value="${ds}"></label>
+    <label class="f">${L('时间','Time')}<input type="time" id="sch-time" value="15:00"></label>
+    <label class="f">${L('时长（分钟）','Length (minutes)')}<select id="sch-dur"><option>30</option><option selected>45</option><option>60</option></select></label>
+  </div><div class="btns"><button class="btn primary" type="submit">${L('排课并发确认邮件','Schedule and send confirmation')}</button></div></form>
+  <section class="card"><h3>${L('所有已排的课','All scheduled lessons')}</h3><div class="rows">${up.map(l=>{const s=stu(l.sid);return `<div class="row"><div class="when"><b>${fmtD(l.date)}</b><span>${fmtT(l.date)} · ${l.dur} ${L('分钟','min')}</span></div><div class="grow"><b>${esc(s.name)}</b><div class="small muted">${calLabel(s.cal)}</div></div>${l.confirmedAt?`<span class="pill ok">✓ ${L('已确认','Confirmed')}</span>`:`<button class="btn sm" data-act="remind" data-lid="${l.id}">${L('预览邮件','Preview email')}</button>`}</div>`}).join('')}</div></section>
+  </div></div>`;
+}
+
+/* ---------- 老师：积分规则 ---------- */
+const RULE_DEFS=[['confirm',['课前确认上课','Confirm before class'],['学生在邮件或网页里点“确认上课”','Student taps "Confirm" in the email or on the site']],['sign',['课后签字','Sign after class'],['学生确认这节课的学习记录','Student signs off on the lesson notes']],['ontime',['按时交作业','Homework on time'],['截止前上传练习视频','Video uploaded before the due date']],['late',['迟交作业','Homework late'],['截止后上传','Uploaded after the due date']],['missing',['作业未交','Homework missing'],['截止后超过 3 天仍未上传','Not uploaded 3 days after the due date']],['noshow',['缺课未请假','No-show'],['没确认也没来上课','Didn\'t confirm and didn\'t come']],['streakBonus',['连续按时奖励','On-time streak bonus'],['每连续按时交作业 N 次额外加分','Extra points for every N on-time homework in a row']]];
+function adminPoints(){
+  const R=state.rules;
+  return `<div class="stack"><div class="page-h"><h1>${L('积分规则','Point rules')}</h1><span class="muted">${L('改数字后，所有人的积分立刻按新规则重算','Change a number and everyone\'s points are recalculated')}</span></div>
+  <div class="grid2">
+    <section class="card"><h3>${L('规则','Rules')}</h3><div>${RULE_DEFS.map(([k,t,d])=>`<div class="rule"><div><b>${nm(t)}</b><div class="small muted">${nm(d)}</div></div><input type="number" id="rule-${k}" data-rule="${k}" value="${R[k]}" step="1" aria-label="${esc(nm(t))}"></div>`).join('')}
+      <div class="rule"><div><b>${L('连续多少次算一轮','Streak length')}</b><div class="small muted">${L('配合上面的连续按时奖励','Used with the streak bonus above')}</div></div><input type="number" id="rule-streakN" data-rule="streakN" value="${R.streakN}" min="0" step="1"></div></div>
+      <p class="small muted">${L('系统只记事实（几点确认、几点上传），积分每次按规则现算。所以改规则不用手动改分。','The system only records facts (when someone confirmed or uploaded) and computes points from the rules each time, so changing a rule needs no manual fixes.')}</p>
+      <p class="small muted">${L('哪些学生能看到积分，在“学生”页每位学生的资料里开关。成人学生可以关掉。','Whether a student sees points is set in each student\'s profile on the Students page. Adults can have it turned off.')}</p>
+    </section>
+    <section class="card"><h3>${L('按当前规则的积分榜','Leaderboard under current rules')}</h3><div id="rules-preview">${leaderboard()}</div></section>
+  </div>
+  <section class="card"><div class="card-h"><h2>${L('兑换奖励','Rewards')}</h2><span class="small muted">${L('学生用积分兑换。下面是示例，正式奖励以后你自己加。','Students spend points here. These are examples; add your real rewards later.')}</span></div>
+    <div class="rows">${state.rewards.map(w=>`<div class="row"><div class="grow"><b>${esc(nm(w.name))}</b> ${w.sample?`<span class="pill plain">${L('示例','Example')}</span>`:''}</div><label class="small muted">${L('需要积分','Cost')} <input type="number" data-rwcost="${w.id}" value="${w.cost}" min="1" step="1" aria-label="${L('需要积分','Cost')}"></label><label class="check small"><input type="checkbox" data-rwon="${w.id}" ${w.on?'checked':''}>${L('开放兑换','Open')}</label></div>`).join('')}</div>
+    <form class="btns" id="rw-form"><input type="text" id="rw-name" placeholder="${L('新奖励，例如 一次免作业券','New reward, e.g. one homework pass')}" style="max-width:280px"><input type="number" id="rw-cost" value="30" min="1" aria-label="${L('需要积分','Cost')}"><button class="btn sm" type="submit">${L('添加奖励','Add reward')}</button></form>
+    <h3>${L('兑换记录','Redemptions')}</h3>
+    <div class="rows">${state.redemptions.slice().reverse().map(x=>`<div class="row"><div class="grow"><b>${esc(stu(x.sid).name)}</b> ${L('兑换了','redeemed')} ${esc(nm(x.name))} <span class="muted small">(−${x.cost})</span><div class="small muted">${fmtDT(x.ts)}</div></div>${x.done?`<span class="pill ok">${L('已发放','Given')}</span>`:`<button class="btn sm" data-act="rw-done" data-xid="${x.id}">${L('标为已发放','Mark as given')}</button>`}</div>`).join('')||`<p class="muted small">${L('还没有人兑换。','No redemptions yet.')}</p>`}</div>
+  </section></div>`;
+}
+
+/* ---------- 老师：提醒流程 ---------- */
+function adminFlow(){
+  const l=state.lessons.find(x=>x.sid==='emma'&&x.status==='scheduled');
+  return `<div class="stack"><div class="page-h"><h1>${L('提醒流程','Reminder flow')}</h1><span class="muted">${L('每节课自动走一遍','Runs automatically for every lesson')}</span></div>
+  <div class="grid2">
+    <section class="card"><h3>${L('时间线','Timeline')}</h3><div class="steps">
+      <div class="step"><div><b>${L('课前 48 小时 · 发确认邮件','48 hours before · confirmation email')}</b><span class="small muted">${L('邮件里有“确认上课”按钮，按学生的语言设置用中文或英文发。','The email has a "Confirm" button and goes out in the student\'s chosen language.')}</span></div></div>
+      <div class="step"><div><b>${L('学生点确认','Student confirms')}</b><span class="small muted">${L(`课程写进你的 Google 日历，学生是受邀嘉宾。Gmail 学生的 Google 日历自动出现这节课；Apple 用户收到标准日历邀请，点“接受”就进 iPhone 日历。确认 +${state.rules.confirm} 分。`,`The lesson goes into your Google Calendar with the student as a guest. Gmail users see it in Google Calendar; Apple users get a standard invite and tap Accept. Confirming earns +${state.rules.confirm}.`)}</span></div></div>
+      <div class="step"><div><b>${L('课前 24 小时 · 补发提醒','24 hours before · follow-up')}</b><span class="small muted">${L('只发给还没确认的学生。','Only to students who haven\'t confirmed.')}</span></div></div>
+      <div class="step"><div><b>${L('课前 2 小时 · 手机日历弹提醒','2 hours before · phone alert')}</b><span class="small muted">${L('由学生自己的日历弹出，Google 和 Apple 都行。','Shown by the student\'s own calendar app, Google or Apple.')}</span></div></div>
+      <div class="step"><div><b>${L('课后 · 你记课，学生签字','After class · you log, student signs')}</b><span class="small muted">${L('48 小时没签就自动确认，但不加分。','Auto-confirms after 48 hours, without points.')}</span></div></div>
+    </div></section>
+    <section class="stack">
+      <div class="card"><h3>${L('两种日历怎么同时支持','Supporting both calendars')}</h3><div class="tbl"><table><thead><tr><th>${L('学生用的','Student uses')}</th><th>${L('收到什么','Receives')}</th><th>${L('改时间以后','After a change')}</th></tr></thead><tbody>
+        <tr><td>Gmail / Google ${L('日历','Calendar')}</td><td>${L('课程直接出现在日历里','Lesson appears in the calendar')}</td><td>${L('自动更新','Updates automatically')}</td></tr>
+        <tr><td>iCloud / Apple ${L('日历','Calendar')}</td><td>${L('邀请邮件，点“接受”','Invite email; tap Accept')}</td><td>${L('收到更新邀请，自动更新','Gets an updated invite')}</td></tr>
+        <tr><td>${L('其他邮箱（Outlook 等）','Other email (Outlook, etc.)')}</td><td>${L('同样的标准邀请','The same standard invite')}</td><td>${L('自动更新','Updates automatically')}</td></tr>
+      </tbody></table></div>
+      <p class="small muted">${L('邀请用的是通用的 .ics 日历格式，三种都认。确认邮件里还会带“加入 Google 日历”和“加入 Apple 日历”两个按钮，作为备用。','Invites use the standard .ics format that all three understand. The email also has "Add to Google Calendar" and "Add to Apple Calendar" buttons as a backup.')}</p>
+      <div class="btns"><button class="btn sm" data-act="remind" data-lid="${l.id}">${L('看确认邮件样例','See sample email')}</button><button class="btn sm" data-act="ics" data-lid="${l.id}">${L('看日历邀请内容','See calendar invite')}</button></div></div>
+    </section>
+  </div></div>`;
+}
+
+/* ---------- 学生 ---------- */
+function stuHome(){
+  const s=stu(state.sid),nx=nextOf(s.id),t=tuition(s);
+  const unsigned=doneOf(s.id).filter(l=>!l.signedAt);
+  const openHw=assignsOf(s.id).filter(a=>!a.submittedAt&&(now<=a.due||now-a.due<=state.rules.grace*DAY));
+  const led=ledger(s.id).slice(0,4);
+  const nd=nx?new Date(nx.date):null;
+  const own=!hasParent(s);
+  const ce=celebrations(s.id);
+  const sp=span(s);
+  return `<div class="stack"><div class="page-h"><h1>${L(`${esc(s.name)}，你好`,`Hi, ${esc(s.name)}`)}</h1><span class="muted">${fmtD(now)}</span></div>
+  ${festBanner()}
+  ${ce.map(c=>`<section class="card celeb-card"><span style="font-size:2rem" aria-hidden="true">${c.k==='birthday'?'🎂':'🎹'}</span><div class="grow"><b>${c.k==='birthday'?L(`今天是你的生日，${c.age} 岁啦！`,`It's your birthday. You're ${c.age}!`):L(`今天是你学琴 ${c.years} 周年！`,`Today is your ${c.years}-year piano anniversary!`)}</b></div><button class="btn sm" data-act="celeb-view" data-k="${c.k}">${L('看庆祝动画','Watch the celebration')}</button></section>`).join('')}
+  ${nx?`<section class="card"><div class="card-h"><h2>${L('下节课','Next lesson')}</h2>${nx.confirmedAt?`<span class="pill ok">✓ ${L('已确认','Confirmed')}</span>`:`<span class="pill wait">${L('请确认','Please confirm')}</span>`}</div>
+    ${nx.changedFrom?`<p class="callout small">${L(`老师把这节课的时间改了：原来 ${fmtDT(nx.changedFrom)}，现在 ${fmtDT(nx.date)}。请重新确认，日历邀请已更新。`,`Your teacher changed this lesson: it was ${fmtDT(nx.changedFrom)} and is now ${fmtDT(nx.date)}. Please confirm again. Your calendar invite was updated.`)}</p>`:''}
+    <div class="next"><div class="date-block"><div class="m">${L(`${nd.getMonth()+1} 月`,MON_EN[nd.getMonth()])}</div><div class="d num">${nd.getDate()}</div><div class="w">${L(WD_ZH[nd.getDay()],WD_EN[nd.getDay()])}</div></div>
+    <div class="stack" style="gap:8px"><p>${L(`<b class="num">${fmtT(nx.date)}</b> 开始 · ${nx.dur} 分钟 · 第 ${nx.n} 节 · ${rel(nx.date)}`,`Starts <b class="num">${fmtT(nx.date)}</b> · ${nx.dur} min · lesson ${nx.n} · ${rel(nx.date)}`)}</p>
+    ${nx.confirmedAt?`<p class="small muted">${L(`已于 ${fmtDT(nx.confirmedAt)} 确认，老师的日历已更新。日历邀请已发到 ${esc(mailTo(s))}。`,`Confirmed ${fmtDT(nx.confirmedAt)}; the teacher's calendar is updated. Invite sent to ${esc(mailTo(s))}.`)}</p>
+      <div class="btns"><a class="btn sm" href="${gcalLink(nx)}" target="_blank" rel="noopener">${L('加入 Google 日历','Add to Google Calendar')}</a><button class="btn sm" data-act="ics" data-lid="${nx.id}">${L('加入 Apple 日历','Add to Apple Calendar')}</button></div>`
+      :`<p class="small muted">${L(`确认后这节课会进老师的日历，你也会收到日历邀请。确认 +${state.rules.confirm} 分。`,`Once you confirm, it goes on the teacher's calendar and you get an invite. Confirming earns +${state.rules.confirm}.`).replace(/\s*(确认 \+\d+ 分。|Confirming earns \+\d+\.)/,showPts(s.id)?' $1':'')}</p><div class="btns"><button class="btn primary" data-act="confirm" data-lid="${nx.id}">${L('确认上课','Confirm lesson')}</button></div>`}
+    </div></div></section>`:''}
+  ${unsigned.length?`<section class="card"><div class="card-h"><h2>${L('请签字确认上节课','Please sign off on your last lesson')}</h2>${showPts(s.id)?`<span class="pill wait">${L(`签字 +${state.rules.sign} 分`,`Signing +${state.rules.sign}`)}</span>`:''}</div>${unsigned.map(l=>lessonBlock(l,true)).join('')}</section>`:''}
+  <div class="grid2">
+    <section class="card"><div class="card-h"><h3>${L('本期课时','This term')}</h3><span class="small muted num">${L(`${t.used} / 10 节`,`${t.used} / 10 lessons`)}</span></div>${keyboard(t.used)}
+      <p class="small">${t.due?(own?`<span class="pill bad">${L('本期 10 节已上完','All 10 lessons used')}</span> ${L('请交下一期学费，老师会发邮件告诉你金额。','Next term\'s tuition is due; the teacher will email the amount.')}`:`<span class="pill plain">${L('本期 10 节已上完','All 10 lessons used')}</span>`):L(`本期还剩 <b class="num">${t.left}</b> 节。`,`<b class="num">${t.left}</b> lessons left this term.`)}</p></section>
+    ${showPts(s.id)?`<section class="card"><div class="card-h"><h3>${L('我的积分','My points')}</h3><button class="btn link small" data-act="tab" data-tab="mypoints">${L('记录和兑换','History and rewards')}</button></div><div class="big-pts num">${balance(s.id)}</div><p class="small muted">${L('可用积分','Available')}</p>
+      <div class="rows">${led.map(e=>`<div class="row"><div class="grow small">${esc(e.label)}</div><span class="pts ${e.pts>=0?'pos':'neg'} num">${signed(e.pts)}</span></div>`).join('')}</div></section>`
+    :`<section class="card"><div class="card-h"><h3>${L('我的学琴之旅','My piano journey')}</h3></div>${journey(s,sp)}</section>`}
+  </div>
+  ${showPts(s.id)?`<section class="card"><div class="card-h"><h3>${L('我的学琴之旅','My piano journey')}</h3><button class="btn link small" data-act="tab" data-tab="learning">${L('正在学什么','What I\'m learning')}</button></div>${journey(s,sp)}</section>`:''}
+  ${openHw.length?`<section class="card"><div class="card-h"><h2>${L('待交作业','Homework to hand in')}</h2><button class="btn link small" data-act="tab" data-tab="homework">${L('所有作业','All homework')}</button></div><div class="rows">${openHw.map(hwRow).join('')}</div></section>`:''}
+  </div>`;
+}
+function journey(s,sp){
+  const nextA=s.start?(()=>{const d=nextOcc(s.start,today()),y=d.getFullYear()-pymd(s.start).getFullYear();return y>=1?L(`下个周年纪念日：${fmtD(d)}（第 ${y} 年，${rel(d)}）`,`Next anniversary: ${fmtD(d)} (year ${y}, ${rel(d)})`):''})():'';
+  return `<dl class="kv2"><dt>${L('开始学琴','Started')}</dt><dd>${s.start?`${fmtYMD(s.start)} · ${spanLabel(sp)}`:'—'}</dd><dt>${L('总课时','Lessons so far')}</dt><dd class="num">${L(`${totalLessons(s)} 节，约 ${totalHours(s).toFixed(1)} 小时`,`${totalLessons(s)} lessons, about ${totalHours(s).toFixed(1)} hours`)}</dd>${s.birth&&s.kind==='child'?`<dt>${L('年龄','Age')}</dt><dd>${L(`${ageOf(s)} 岁`,`${ageOf(s)}`)}</dd>`:''}</dl>${nextA?`<p class="small muted">${nextA}</p>`:''}`;
+}
+
+/* ---------- 家长：家庭总览 ---------- */
+function parentHome(){
+  const p=par(state.pid),kids=p.kids.map(stu);
+  const nN=unreadNotices(),nM=unreadMsgsU();
+  return `<div class="stack"><div class="page-h"><h1>${L(`${esc(nm(p.name))}，你好`,`Hi, ${esc(nm(p.name))}`)}</h1><span class="muted">${fmtD(now)}</span></div>
+  ${festBanner()}
+  ${(nN||nM)?`<section class="card"><div class="btns">${nN?`<button class="btn" data-act="tab" data-tab="unotices">${L('新通知','New notices')} <span class="badge">${nN}</span></button>`:''}${nM?`<button class="btn" data-act="tab" data-tab="umessages">${L('老师的回复','Teacher replies')} <span class="badge">${nM}</span></button>`:''}</div></section>`:''}
+  ${kids.map(k=>{
+    const nx=nextOf(k.id),t=tuition(k),lr=learning(k.id),open=assignsOf(k.id).filter(a=>!a.submittedAt&&(now<=a.due||now-a.due<=state.rules.grace*DAY)),uns=doneOf(k.id).filter(l=>!l.signedAt),ce=celebrations(k.id);
+    return `<section class="card kidcard"><div class="head">${avatar(k,48)}<div class="grow"><h2>${esc(k.name)}</h2><p class="small muted">${esc(nm(k.level))}${k.birth?` · ${L(`${ageOf(k)} 岁`,`age ${ageOf(k)}`)}`:''}</p></div><button class="btn sm" data-act="child-go" data-sid="${k.id}" data-tab="records">${L('看学习记录','Lessons')}</button><button class="btn sm" data-act="child-go" data-sid="${k.id}" data-tab="homework">${L('看作业','Homework')}</button></div>
+      ${ce.map(c=>`<div class="callout small">${c.k==='birthday'?L(`🎂 今天是 ${esc(k.name)} 的生日（${c.age} 岁）`,`🎂 Today is ${esc(k.name)}'s birthday (${c.age})`):L(`🎹 今天是 ${esc(k.name)} 学琴 ${c.years} 周年`,`🎹 Today is ${esc(k.name)}'s ${c.years}-year piano anniversary`)}</div>`).join('')}
+      ${t.due?`<div class="pay"><div class="grow"><b>${L('缴费提醒','Tuition reminder')}</b><div>${L(`${esc(k.name)} 本期 10 节已经上完，请交下一期学费。金额和付款方式见老师的邮件（Venmo / Zelle）。`,`${esc(k.name)} has finished all 10 lessons this term. Next term's tuition is due; see the teacher's email for the amount (Venmo / Zelle).`)}</div></div>${k.claimed?`<span class="pill ok">${L('已通知老师','Teacher notified')}</span>`:`<button class="btn sm" data-act="pay-claim" data-sid="${k.id}">${L('我已付款','I\'ve paid')}</button>`}</div>`:`<p class="small muted">${L(`本期还剩 ${t.left} 节课。`,`${t.left} lessons left this term.`)}</p>`}
+      <div class="grid2">
+        <div class="stack" style="gap:8px"><p class="small muted">${L('课程进度','Lesson progress')}</p>${keyboard(t.used)}<p class="small num">${L(`本期 ${t.used} / 10 节 · 累计 ${totalLessons(k)} 节`,`${t.used} / 10 this term · ${totalLessons(k)} in total`)}</p>
+          <p class="small">${nx?L(`下节课：<b>${fmtDT(nx.date)}</b> ${nx.confirmedAt?'':'（待确认）'}`,`Next: <b>${fmtDT(nx.date)}</b> ${nx.confirmedAt?'':'(unconfirmed)'}`):L('下节课还没排','Next lesson not scheduled')}</p>
+          ${nx&&nx.changedFrom?`<p class="callout small">${L(`时间已调整：原 ${fmtDT(nx.changedFrom)}`,`Time changed from ${fmtDT(nx.changedFrom)}`)}</p>`:''}
+          ${nx&&!nx.confirmedAt?`<div class="btns"><button class="btn sm primary" data-act="confirm" data-lid="${nx.id}">${L('帮孩子确认上课','Confirm for my child')}</button></div>`:''}</div>
+        <div class="stack" style="gap:8px"><p class="small muted">${L('课程内容进度','What they are learning')}</p>
+          ${lr.cur.length?lr.cur.slice(0,4).map(e=>`<div class="piece"><span class="work">${esc(nm(e.p[0]))}</span><span class="pill ${e.st==='new'?'wait':'plain'}">${nm(ST_LABEL[e.st])}</span></div>`).join(''):`<span class="muted small">—</span>`}
+          <p class="small muted">${L(`学过 ${lr.past.length} 首`,`${lr.past.length} finished`)} · <button class="btn link small" data-act="child-go" data-sid="${k.id}" data-tab="learning">${L('全部','See all')}</button></p>
+          <p class="small muted">${L('家庭作业','Homework')}</p>
+          ${open.map(a=>`<div class="small"><span class="work">${esc(pieceName(a))}</span> · ${esc(tx(a.title))} <span class="pill ${hwStatus(a).k}">${hwStatus(a).t}</span></div>`).join('')||`<span class="muted small">${L('现在没有待交作业','Nothing due right now')}</span>`}
+          ${uns.length?`<p class="small"><span class="pill wait">${L('有记录待签字','Lesson note to sign')}</span></p>`:''}</div>
+      </div>
+      ${showPts(k.id)?`<p class="small muted">${L(`${esc(k.name)} 的积分：${balance(k.id)}`,`${esc(k.name)}'s points: ${balance(k.id)}`)}</p>`:''}
+    </section>`}).join('')}
+  </div>`;
+}
+
+/* ---------- 正在学习 ---------- */
+function stuLearning(){
+  const s=stu(state.sid),lr=learning(s.id),bk=s.books||[];
+  const piece=e=>`<div class="prow"><div class="grow"><span class="work">${esc(nm(e.p[0]))}</span> <span class="muted small">${esc(nm(e.p[1]))}</span></div>${e.st==='done'?`<span class="pill ok">${L('完成','Done')}</span><span class="small muted">${L('完成于','finished')} ${fmtD(e.last)}</span>`:`<span class="pill ${e.st==='new'?'wait':'plain'}">${nm(ST_LABEL[e.st])}</span><span class="small muted">${L(`${fmtD(e.first)} 开始 · 练了 ${e.n} 节课`,`started ${fmtD(e.first)} · ${e.n} lesson${e.n>1?'s':''}`)}</span>`}</div>`;
+  return `<div class="stack"><div class="page-h"><h1>${L('正在学习','Learning now')}</h1><span class="muted">${esc(s.name)}</span></div>
+  <div class="grid2">
+    <section class="card"><h2>${L('正在学的教材','Books in progress')}</h2><div class="chips" style="gap:8px">${bk.filter(b=>b.s==='current').map(b=>`<span class="pbook">📘 ${esc(nm(b.n))}</span>`).join('')||`<span class="muted small">${L('老师还没填教材','Your teacher hasn\'t added books yet')}</span>`}</div>
+      <h3>${L('以前学过的教材','Finished books')}</h3><div class="chips" style="gap:8px">${bk.filter(b=>b.s==='done').map(b=>`<span class="pbook">✓ ${esc(nm(b.n))}</span>`).join('')||`<span class="muted small">—</span>`}</div></section>
+    <section class="card"><h3>${L('学琴概况','Overview')}</h3>${journey(s,span(s))}</section>
+  </div>
+  <section class="card"><div class="card-h"><h2>${L('正在学的曲目','Pieces in progress')}</h2><span class="small muted">${L(`${lr.cur.length} 首`,`${lr.cur.length}`)}</span></div><div class="plist">${lr.cur.map(piece).join('')||`<p class="muted small">—</p>`}</div></section>
+  <section class="card"><div class="card-h"><h2>${L('以前学过的曲目','Pieces finished')}</h2><button class="btn link small" data-act="${state.role==='parent'?'tab':'tab'}" data-tab="portfolio">${L('去作品集看录像','Watch recordings')}</button></div><div class="plist">${lr.past.map(piece).join('')||`<p class="muted small">${L('还没有完成的曲目。','Nothing finished yet.')}</p>`}</div></section>
+  <p class="small muted">${L('曲目从老师每节课的记录里自动整理；教材由老师维护。','Pieces are collected from your teacher\'s lesson notes. Your teacher maintains the book list.')}</p></div>`;
+}
+function hwRow(a){
+  const st=hwStatus(a);const canUp=!a.submittedAt;
+  const acc=a.acc&&a.acc.length?(accActive(a)?`<div class="acc-chips">${a.acc.map(accChip).join('')}</div><div class="small muted">${L('伴奏','Accompaniment')} ${accKeepLabel(a)}</div>`:`<div class="small muted">${L('这条作业的伴奏','Accompaniment for this homework')} ${accKeepLabel(a)}</div>`):'';
+  return `<div class="row"><div class="grow"><span class="work">${esc(pieceName(a))}</span> <span class="small muted">${esc(nm(a.piece[1]))}</span><div class="small">${esc(tx(a.title))}</div><div class="small muted">${L('截止','Due')} ${fmtDT(a.due)}${a.video?` · ${L('已上传','uploaded')} ${esc(a.video.name)}`:''}</div>${acc}</div>
+    <span class="pill ${st.k}">${st.t}</span>
+    ${canUp?`<button class="btn sm primary" data-act="up-open" data-aid="${a.id}">${L('交作业','Submit video')}</button>`:''}</div>`;
+}
+function stuRecords(){
+  const s=stu(state.sid),ds=doneOf(s.id);
+  return `<div class="stack"><div class="page-h"><h1>${L('学习记录','Lessons')}</h1><span class="muted">${L(`共 ${ds.length} 节`,`${ds.length} lessons`)}</span></div>
+    <section class="card">${ds.map(l=>lessonBlock(l,true)).join('')}</section></div>`;
+}
+function stuHomework(){
+  const s=stu(state.sid),as=assignsOf(s.id);
+  const sample=as.find(a=>!a.submittedAt&&now<a.due)||as[0];
+  return `<div class="stack"><div class="page-h"><h1>${L('作业','Homework')}</h1><span class="muted">${L('视频直接传进老师 Google Drive 里你的文件夹，不需要 Google 账号','Videos go straight into your folder in the teacher\'s Google Drive; no Google account needed')}</span></div>
+    <p class="callout small">${L(`按时上传 +${state.rules.ontime} 分，迟交 ${signed(state.rules.late)} 分，截止后 ${state.rules.grace} 天还没交 ${signed(state.rules.missing)} 分。点“交作业”可以现场录，也可以从相册选；不登录的话，点作业邮件里的专属上传链接也行。`,`On time +${state.rules.ontime}, late ${signed(state.rules.late)}, still missing ${state.rules.grace} days after the due date ${signed(state.rules.missing)}. Tap "Submit video" to record now or pick from your library. You can also use the private upload link in the homework email without signing in.`)}</p>
+    ${sample?`<div class="btns"><button class="btn sm" data-act="hw-mail" data-aid="${sample.id}">${L('看作业邮件样例','See sample homework email')}</button></div>`:''}
+    <section class="card"><div class="rows">${as.map(hwRow).join('')}</div></section></div>`;
+}
+function stuMusic(){
+  const v=visibleTracks(state.sid);
+  const byHw=new Map();v.filter(x=>x.a).forEach(x=>{if(!byHw.has(x.a.id))byHw.set(x.a.id,[]);byHw.get(x.a.id).push(x)});
+  const cols=state.library.cols.map(c=>({c,items:v.filter(x=>x.col&&x.t.cid===c.id)})).filter(g=>g.items.length);
+  return `<div class="stack"><div class="page-h"><h1>${L('伴奏','Accompaniments')}</h1><span class="muted">${L('老师开放给你的伴奏，点圆形按钮播放','Tracks your teacher shared with you; tap the round button to play')}</span></div>
+    ${byHw.size?`<section class="card"><div class="card-h"><h2>${L('这周作业的伴奏','For this week\'s homework')}</h2><span class="pill wait">${L('随作业解锁','Unlocked by homework')}</span></div>${[...byHw.entries()].map(([aid,items])=>{const a=state.assigns.find(x=>x.id===aid);return `<div><p class="small"><span class="work">${esc(pieceName(a))}</span> · ${L('截止','due')} ${fmtD(a.due)} · <span class="muted">${accKeepLabel(a)}</span></p>${items.map(x=>trackRow(x,{note:''})).join('')}</div>`}).join('')}</section>`:''}
+    ${cols.map(g=>`<section class="card"><div class="card-h"><h3>${esc(nm(g.c.name))}</h3><span class="small muted">${g.c.download?L('可以下载','Downloadable'):L('仅在线播放','Stream only')}</span></div><p class="small muted">${esc(nm(g.c.desc))}</p><div>${g.items.map(x=>trackRow(x,{note:''})).join('')}</div></section>`).join('')}
+    ${!v.length?`<section class="card"><p class="muted">${L('老师还没有给你开放伴奏。','Your teacher hasn\'t shared any accompaniments yet.')}</p></section>`:''}
+    <p class="small muted">${L('演示版用浏览器合成几小节伴奏型代替真实录音。','The demo synthesizes a few bars in the browser instead of real recordings.')}</p>
+  </div>`;
+}
+function stuPortfolio(){
+  const s=stu(state.sid);
+  let as=assignsOf(s.id).filter(a=>a.video);
+  if(state.pfFilter==='feat')as=as.filter(a=>a.featured);
+  const ytPill=a=>a.yt==='ok'?`<span class="pill plain">${L('YouTube 不公开','YouTube · unlisted')}</span>`:`<span class="pill wait">${L('等待转存','Waiting to transfer')}</span>`;
+  const driveLine=a=>{const until=a.submittedAt+90*DAY;return now<until?L(`Drive 原件保留到 ${fmtD(until)}`,`Drive original kept until ${fmtD(until)}`):L('Drive 原件已清理，全画质备份在家里 NAS','Drive original cleaned up; full-quality backup on the home NAS')};
+  return `<div class="stack"><div class="page-h"><h1>${L('作品集','Portfolio')}</h1><span class="muted">${L('长期保存在老师的 YouTube 频道，设为不公开','Kept long-term on the teacher\'s YouTube channel as unlisted')}</span></div>
+    <div class="chips"><button class="chip" data-act="pf" data-f="all" aria-pressed="${state.pfFilter==='all'}">${L('全部练习','All practice')}</button><button class="chip" data-act="pf" data-f="feat" aria-pressed="${state.pfFilter==='feat'}">${L('完成曲目','Finished pieces')}</button></div>
+    <div class="pf">${as.map(a=>`<article class="card"><div class="thumb">${a.video.url?`<video src="${a.video.url}" controls playsinline></video>`:`${thumb(a.id)}<span class="play num">▶ ${esc(a.video.dur)}</span>`}</div>
+      <div class="meta"><span class="work" style="font-size:1.05rem">${esc(pieceName(a))}</span><span class="small muted">${esc(nm(a.piece[1]))}</span><span class="small muted">${L(`${fmtD(a.submittedAt)} 上传`,`Uploaded ${fmtD(a.submittedAt)}`)} ${a.featured?`· <span class="pill ok">${L('完成曲目','Finished')}</span>`:''}</span><span class="small">${ytPill(a)}</span><span class="small muted">${driveLine(a)}</span></div></article>`).join('')||`<p class="muted">${L('这里还没有视频。','No videos yet.')}</p>`}</div>
+    <p class="small muted">${L('新上传的视频先存在 Drive，每小时转存一次到 YouTube；转存成功并满 90 天后，Drive 原件才会清理。“不公开”的意思是：拿到链接的人能看，搜索不到。示例视频只显示缩略图；你上传的视频可以直接在这里播放。','New uploads sit in Drive and move to YouTube hourly; the Drive original is cleaned up only after a successful transfer and 90 days. Unlisted means anyone with the link can watch, but it can\'t be found by search. Sample videos show a thumbnail only; videos you upload play here.')}</p></div>`;
+}
+function stuPoints(){
+  const s=stu(state.sid),led=ledger(s.id),R=state.rules,mine=state.redemptions.filter(x=>x.sid===s.id).slice().reverse();
+  const bal=balance(s.id);
+  return `<div class="stack"><div class="page-h"><h1>${L('我的积分','My points')}</h1><span class="big-pts num">${bal}</span></div>
+  <section class="card"><div class="card-h"><h2>${L('兑换奖励','Rewards')}</h2><span class="small muted">${L(`累计获得 ${total(s.id)} 分，已用 ${spent(s.id)} 分，可用 ${bal} 分`,`Earned ${total(s.id)}, spent ${spent(s.id)}, available ${bal}`)}</span></div>
+    <div class="rows">${state.rewards.filter(w=>w.on).map(w=>`<div class="row"><div class="grow"><b>${esc(nm(w.name))}</b></div><span class="pts num">${w.cost}</span><button class="btn sm primary" data-act="redeem" data-rid="${w.id}" ${bal<w.cost?'disabled':''}>${bal<w.cost?L(`还差 ${w.cost-bal} 分`,`${w.cost-bal} more`):L('兑换','Redeem')}</button></div>`).join('')||`<p class="muted small">${L('老师还没有添加奖励。','No rewards yet.')}</p>`}</div>
+    ${mine.length?`<h3>${L('我的兑换','My redemptions')}</h3><div class="rows">${mine.map(x=>`<div class="row"><div class="grow">${esc(nm(x.name))} <span class="small muted">(−${x.cost}) · ${fmtD(x.ts)}</span></div>${x.done?`<span class="pill ok">${L('老师已发放','Given')}</span>`:`<span class="pill wait">${L('等老师确认','Waiting for teacher')}</span>`}</div>`).join('')}</div>`:''}</section>
+  <div class="grid2">
+    <section class="card"><h3>${L('积分记录','Point history')}</h3><div class="tbl"><table><thead><tr><th>${L('日期','Date')}</th><th>${L('事项','Event')}</th><th class="r">${L('分数','Points')}</th></tr></thead><tbody>${led.map(e=>`<tr><td class="num small">${fmtD(e.d)}</td><td>${esc(e.label)}</td><td class="r pts ${e.pts>=0?'pos':'neg'} num">${signed(e.pts)}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="card"><h3>${L('积分规则','Rules')}</h3><div class="rows">${RULE_DEFS.map(([k,t,d])=>`<div class="row"><div class="grow"><b>${nm(t)}</b><div class="small muted">${k==='streakBonus'?L(`每连续按时交作业 ${R.streakN} 次`,`Every ${R.streakN} on-time homework in a row`):nm(d)}</div></div><span class="pts ${R[k]>=0?'pos':'neg'} num">${signed(R[k])}</span></div>`).join('')}</div></section>
+  </div></div>`;
+}
+/* ---------- 交作业：现场录 / 相册选 ---------- */
+const CHUNK=8*1024*1024;
+let upTimer=null,camStream=null,recorder=null,recChunks=[],recTick=null;
+function stopCam(){try{if(recorder&&recorder.state!=='inactive')recorder.stop()}catch(_){}recorder=null;clearInterval(recTick);recTick=null;if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}}
+function endUpload(){clearInterval(upTimer);upTimer=null;stopCam();state.up=null}
+function modalUpload(){
+  const U=state.up,a=state.assigns.find(x=>x.id===U.aid),st=hwStatus(a);
+  const head=`<div class="card-h"><div><h2>${L('交作业','Submit video')}</h2><p class="small muted"><span class="work">${esc(pieceName(a))}</span> · ${esc(tx(a.title))}</p></div><button class="btn sm" data-act="close">${L('关闭','Close')}</button></div>
+    <p class="small">${L('截止','Due')} ${fmtDT(a.due)} <span class="pill ${st.k}">${st.t}</span></p>`;
+  if(U.step==='choose'){
+    return `${head}
+    <div class="callout small">💡 <b>${L('录制前先打开灯光','Turn the lights on before you record')}</b> ${L('钢琴和双手要照得清楚，别逆光。录完先回看一遍，画面和声音都没问题再上传。','Light the piano and your hands, and avoid backlight. After recording, play it back and upload only when the picture and sound are both fine.')}</div>
+    <div class="up-opts">
+      <div class="up-opt"><div class="ic">${IC_CAM}</div><h3>${L('现在录一段','Record now')}</h3>
+        <p class="small muted">${L('手机上会直接打开相机，录完点“使用视频”就回到这里。','On a phone this opens the camera. Tap "Use Video" when you\'re done to come back here.')}</p>
+        <label class="btn primary" for="up-cam">${L('打开相机','Open camera')}</label><input type="file" id="up-cam" accept="video/*" capture="environment" hidden>
+        <button class="btn link small" type="button" data-act="cam-start">${L('在电脑上用摄像头录','Use the computer\'s webcam')}</button></div>
+      <div class="up-opt"><div class="ic">${IC_LIB}</div><h3>${L('从相册或文件选','Choose from library')}</h3>
+        <p class="small muted">${L('选一段已经录好的视频。手机上会打开相册，电脑上会打开文件夹。','Pick a video you already recorded. Phones open the photo library; computers open a file window.')}</p>
+        <label class="btn" for="up-pick">${L('选择视频','Choose video')}</label><input type="file" id="up-pick" accept="video/*" hidden></div>
+    </div>
+    ${U.err?`<p class="callout small" role="alert">${esc(U.err)}</p>`:''}
+    <div><p class="small"><b>${L('录之前','Before you record')}</b></p><ul class="tips small muted">
+      <li>${L('横着拍，让老师看到双手、琴键和踏板。','Film sideways so both hands, the keys and the pedals are in view.')}</li>
+      <li>${L('手机相机设成 1080p 就够了。4K 一分钟大约 400 MB，传得很慢。','1080p is plenty. One minute of 4K is about 400 MB and slow to upload.')}</li>
+      <li>${L('尽量连 Wi-Fi 上传。上传时别关掉页面；断网了，回来会接着传。','Use Wi-Fi if you can. Keep this page open while uploading; if the connection drops, it picks up where it left off.')}</li>
+    </ul></div>`;
+  }
+  if(U.step==='cam'){
+    return `${head}
+    <div class="preview"><video id="cam-live" autoplay muted playsinline></video></div>
+    <p class="callout small">💡 ${L('开始前确认灯光够亮，双手和琴键都在画面里。','Before you start, check that the light is bright and both hands and the keys are in the picture.')}</p>
+    <div class="btns"><span id="rec-state" class="small muted">${L('准备好就点开始。','Press start when you\'re ready.')}</span></div>
+    <div class="btns"><button class="btn primary" type="button" id="rec-btn" data-act="rec-toggle">${L('开始录制','Start recording')}</button><button class="btn" type="button" data-act="up-back">${L('返回','Back')}</button></div>`;
+  }
+  const f=U.file,chunks=Math.max(1,Math.ceil(f.size/CHUNK));
+  if(U.step==='review'){
+    return `${head}
+    <div class="preview"><video src="${f.url}" controls playsinline></video></div>
+    <p class="small num">${esc(f.name)} · ${mb(f.size)} · ${L(`分 ${chunks} 块上传`,`${chunks} chunk${chunks>1?'s':''}`)}</p>
+    <div class="chk"><b class="small">${L('上传前请先播放上面的视频，检查：','Play the video above and check before uploading:')}</b>
+      <label class="check"><input type="checkbox" id="chk-v" ${U.chkV?'checked':''}>${L('画面清楚，能看到双手和琴键','The picture is clear and shows both hands and the keys')}</label>
+      <label class="check"><input type="checkbox" id="chk-a" ${U.chkA?'checked':''}>${L('声音正常，没有太小或杂音','The sound is fine, not too quiet or noisy')}</label></div>
+    ${f.size>1.5e9?`<p class="callout small">${L('这个文件比较大，建议用 Wi-Fi，或者把相机分辨率调到 1080p 重新录。','This file is large. Use Wi-Fi, or switch the camera to 1080p and record again.')}</p>`:''}
+    <div class="btns"><button class="btn primary" type="button" data-act="up-go" ${U.chkV&&U.chkA?'':'disabled'}>${L('上传到老师的 Drive','Upload to teacher\'s Drive')}</button><button class="btn" type="button" data-act="up-back">${L('换一段','Choose another')}</button></div>`;
+  }
+  /* uploading */
+  const sent=Math.min(f.size,Math.round(f.size*U.pct/100)),ci=Math.min(chunks,Math.max(1,Math.ceil(sent/CHUNK)));
+  return `${head}
+    <p class="small"><b>${L('正在上传','Uploading')}</b> · ${esc(f.name)}</p>
+    <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${U.pct}"><i style="width:${U.pct}%"></i></div>
+    <p class="small muted num">${L(`已传 ${mb(sent)} / ${mb(f.size)} · 第 ${ci} / ${chunks} 块`,`${mb(sent)} of ${mb(f.size)} · chunk ${ci} of ${chunks}`)}</p>
+    <p class="small muted">${L('演示：真实网站把视频分块直接传进老师 Drive 里你的文件夹。','Demo: the real site sends the video in chunks straight to your folder in the teacher\'s Drive.')}</p>`;
+}
+function startUpload(){
+  const U=state.up;U.step='uploading';U.pct=0;drawModal();
+  upTimer=setInterval(()=>{
+    U.pct=Math.min(100,U.pct+7+Math.random()*9);
+    if(U.pct>=100){clearInterval(upTimer);upTimer=null;finishUpload();return}
+    const bar=document.querySelector('.prog>i');if(bar){drawModal()}
+  },260);
+}
+function finishUpload(){
+  const U=state.up,a=state.assigns.find(x=>x.id===U.aid);
+  a.submittedAt=Date.now();a.video={name:U.file.name,dur:U.file.dur||'—',url:U.file.url};a.yt='pending';
+  const ok=a.submittedAt<=a.due;state.up=null;closeModal();render();
+  toast(ok?L(`已交作业 · 按时 +${state.rules.ontime} 分`,`Submitted · on time +${state.rules.ontime}`):L(`已交作业 · 迟交 ${signed(state.rules.late)} 分`,`Submitted · late ${signed(state.rules.late)}`));
+}
+async function startCam(){
+  const U=state.up;
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder)throw new Error('unsupported');
+    camStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:true});
+    U.step='cam';U.err='';drawModal();
+    const v=document.getElementById('cam-live');if(v)v.srcObject=camStream;
+  }catch(_){
+    stopCam();
+    U.err=L('这个演示页不能使用摄像头，所以这里打不开。真实网站会先弹出“允许使用摄像头和麦克风”，点允许就能在页面里直接录。在手机上，更推荐点上面的“打开相机”。','The demo page isn\'t allowed to use the camera, so this can\'t open here. On the real site the browser asks to use the camera and microphone; allow it and you can record right in the page. On a phone, "Open camera" above works better.');
+    drawModal();
+  }
+}
+function toggleRec(){
+  const U=state.up,btn=document.getElementById('rec-btn'),lab=document.getElementById('rec-state');
+  if(!recorder){
+    recChunks=[];
+    try{recorder=new MediaRecorder(camStream)}catch(_){toast(L('这个浏览器不能录视频','This browser cannot record video'));return}
+    recorder.ondataavailable=e=>{if(e.data&&e.data.size)recChunks.push(e.data)};
+    recorder.onstop=()=>{
+      const blob=new Blob(recChunks,{type:recorder&&recorder.mimeType||'video/webm'});const secs=U.recSecs||0;
+      const ext=(blob.type.includes('mp4')?'mp4':'webm');
+      stopCam();
+      U.file={name:L(`练习录像-${fmtT(Date.now()).replace(':','')}.${ext}`,`practice-${fmtT(Date.now()).replace(':','')}.${ext}`),size:blob.size,url:URL.createObjectURL(blob),dur:`${Math.floor(secs/60)}:${pad(secs%60)}`};
+      U.step='review';drawModal();
+    };
+    recorder.start(1000);U.recSecs=0;
+    if(btn)btn.textContent=L('停止','Stop');
+    recTick=setInterval(()=>{U.recSecs++;if(lab)lab.innerHTML=`<span class="rec-dot"></span> ${L('录制中','Recording')} <span class="num">${Math.floor(U.recSecs/60)}:${pad(U.recSecs%60)}</span>`},1000);
+    if(lab)lab.innerHTML=`<span class="rec-dot"></span> ${L('录制中','Recording')} <span class="num">0:00</span>`;
+  }else{clearInterval(recTick);recTick=null;try{recorder.stop()}catch(_){}}
+}
+
+/* ---------- 弹窗 ---------- */
+function mailMock(to,subject,body,lg){
+  const s=lg?state.students.find(x=>x.email===to):null;
+  return `<div class="mail"><div class="mail-h"><span>${L('发件人','From')}</span><b>${teacherEmail()}</b><span>${L('收件人','To')}</span><b>${esc(to)}</b><span>${L('主题','Subject')}</span><b>${esc(subject)}</b></div><div class="mail-b">${body}</div></div>${lg?`<p class="small muted">${L(`按学生的语言设置，用${lg==='en'?'英文':'中文'}发送。`,`Sent in ${lg==='en'?'English':'Chinese'}, the student's chosen language.`)}</p>`:''}`;
+}
+function modalRemind(lid){
+  const l=state.lessons.find(x=>x.id===lid),s=stu(l.sid),g=s.lang;
+  return `<div class="card-h"><h2>${L('上课确认邮件','Lesson confirmation email')}</h2><button class="btn sm" data-act="close">${L('关闭','Close')}</button></div>
+  ${mailMock(mailTo(s),LL(g,`钢琴课确认：${fmtD(l.date,g)} ${fmtT(l.date)}`,`Piano lesson: please confirm ${fmtD(l.date,g)} ${fmtT(l.date)}`),`<p>${LL(g,`${esc(s.name)} 你好，`,`Hi ${esc(s.name)},`)}</p><p>${LL(g,`下节钢琴课在 <b>${fmtDT(l.date,g)}</b>，${l.dur} 分钟，第 ${l.n} 节。请点下面的按钮确认能来上课。`,`Your next piano lesson is <b>${fmtDT(l.date,g)}</b>, ${l.dur} minutes (lesson ${l.n}). Please confirm below.`)}</p>
+    <div class="btns"><button class="btn primary" data-act="confirm" data-lid="${l.id}">${LL(g,'确认上课','Confirm lesson')}</button><span class="btn sm" aria-disabled="true">${LL(g,'需要改时间','Need to reschedule')}</span></div>
+    <p class="small muted">${LL(g,'确认后：课程进老师的 Google 日历，同时给你发日历邀请（Google、Apple、Outlook 日历都能用）。','After you confirm, the lesson goes on the teacher\'s Google Calendar and you get a calendar invite (works with Google, Apple and Outlook).')}</p>`,g)}
+  <p class="small muted">${L('演示版里点“确认上课”就是模拟学生在邮件里确认。','In the demo, tapping Confirm simulates the student confirming from the email.')}</p>
+  <div class="btns"><button class="btn primary" data-act="send" data-lid="${l.id}">${L('发送（演示）','Send (demo)')}</button></div>`;
+}
+function modalTuition(sid){
+  const s=stu(sid),t=tuition(s),pp=payerOf(s),isPar=pp!==s,g=pp.lang||s.lang;
+  const who=isPar?LL(g,pp.name[0],pp.name[1]):s.name;
+  return `<div class="card-h"><h2>${L('学费提醒邮件','Tuition reminder email')}</h2><button class="btn sm" data-act="close">${L('关闭','Close')}</button></div>
+  ${mailMock(isPar?pp.email:mailTo(s),LL(g,`学费提醒：${s.name} 第 ${s.paid+1} 期课时`,`Tuition reminder: ${s.name}, term ${s.paid+1}`),`<p>${LL(g,`${esc(who)} 您好，`,`Hi ${esc(who)},`)}</p><p>${LL(g,`${esc(s.name)} 本期 10 节课已经全部上完（累计第 ${t.done} 节）。下一期 10 节课的学费是 <b>[金额]</b>，可以通过 <b>[Venmo / Zelle 账号]</b> 支付。`,`${esc(s.name)} has finished all 10 lessons this term (${t.done} in total). Tuition for the next 10 lessons is <b>[amount]</b>, payable by <b>[Venmo / Zelle account]</b>.`)}</p><p>${LL(g,'谢谢！','Thank you!')}</p>`,g)}
+  <p class="small muted">${isPar?L('这位学生配对了家长账户，学费提醒只发给家长，孩子的账户不会收到。','This student is paired with a parent account, so the reminder goes to the parent only; the child account gets none.'):L('这位学生没有配对家长，提醒发给学生本人。','This student has no paired parent, so the reminder goes to the student.')} ${L('金额和付款方式在真实版的设置里填一次就行。收到钱后点“记录已收款”，进度条清零。','Set the amount and payment method once in the real settings. After payment, tap Mark paid and the progress resets.')}</p>
+  <div class="btns"><button class="btn primary" data-act="send-t" data-sid="${sid}">${L('发送（演示）','Send (demo)')}</button></div>`;
+}
+function modalIcs(lid){
+  const l=state.lessons.find(x=>x.id===lid);
+  return `<div class="card-h"><h2>${L('Apple 日历邀请','Apple Calendar invite')}</h2><button class="btn sm" data-act="close">${L('关闭','Close')}</button></div>
+  <p class="small">${L('真实版本里，这段内容作为 .ics 附件随邮件发出。iPhone 上点开附件选“添加到日历”就行；用 iCloud 邮箱的学生会直接收到邀请。演示页没法下载文件，下面是附件里的原文：','On the real site this goes out as an .ics attachment. On an iPhone, open it and choose Add to Calendar; iCloud email users get the invite directly. The demo can\'t download files, so here is the attachment text:')}</p>
+  <pre class="ics">${esc(ics(l))}</pre>
+  <p class="small muted">${L('<b>VALARM</b> 那一段是“课前 2 小时提醒”。有些日历会改用学生自己设置的默认提醒时间，所以课前 24 小时的提醒邮件也会照常发。','The <b>VALARM</b> block is the 2-hour alert. Some calendars use the student\'s own default alert instead, so the 24-hour reminder email still goes out.')}</p>`;
+}
+function modalHwMail(aid){
+  const a=state.assigns.find(x=>x.id===aid),s=stu(a.sid),g=s.lang;
+  const linkUntil=a.due+state.rules.grace*DAY;
+  const t0=a.piece[0],pn=Array.isArray(t0)?LL(g,t0[0],t0[1]):t0,hw=Array.isArray(a.title)?LL(g,a.title[0],a.title[1]):a.title;
+  return `<div class="card-h"><h2>${L('作业邮件','Homework email')}</h2><button class="btn sm" data-act="close">${L('关闭','Close')}</button></div>
+  ${mailMock(mailTo(s),LL(g,`新作业：${pn}，${fmtD(a.due,g)} 截止`,`New homework: ${pn}, due ${fmtD(a.due,g)}`),`<p>${LL(g,`${esc(s.name)} 你好，这周的作业是：`,`Hi ${esc(s.name)}, this week's homework:`)}</p><p><b>${esc(hw)}</b></p><p class="small muted">${LL(g,'截止','Due')} ${fmtDT(a.due,g)}</p>
+    ${a.acc&&a.acc.length?`<p class="small">${LL(g,'附带伴奏（打开网站就能听）：','Accompaniments (play them on the site):')}</p><div class="acc-chips" style="margin-top:0">${a.acc.map(accChip).join('')}</div>`:''}
+    <div class="btns"><span class="btn primary" aria-disabled="true">${LL(g,'上传练习视频（不用登录）','Upload practice video (no sign-in)')}</span></div>
+    <p class="small muted">${LL(g,`这个上传链接只对这条作业有效，${fmtD(linkUntil,g)} 失效。请不要转发给别人。`,`This link works only for this homework and expires ${fmtD(linkUntil,g)}. Please don't forward it.`)}</p>`,g)}
+  <p class="small muted">${L('点上传后打开的页面和网站里的“交作业”一样：可以现场录，也可以从相册选。','The upload link opens the same Submit screen as the site: record now or pick from the library.')}</p>`;
+}
+function modalAvatar(){
+  const u=currentUser(),kidUser=state.role==='student'&&u.kind==='child';
+  const pal=state.avPal||(kidUser?'kid':'adult'),list=pal==='kid'?KID_AV:ADULT_AV,a=u.avatar||{};
+  const sel=a.t==='emoji'?a.c:null;
+  return `<div class="card-h"><h2>${state.role==='admin'?L('头像和 logo','Avatar and logo'):L('我的头像','My avatar')}</h2><button class="btn sm" data-act="close">${L('完成','Done')}</button></div>
+  <div style="display:flex;gap:14px;align-items:center">${avatar(u,64)}<div class="chips"><button class="chip" data-act="av-pal" data-p="kid" aria-pressed="${pal==='kid'}">${L('可爱','Cute')}</button><button class="chip" data-act="av-pal" data-p="adult" aria-pressed="${pal==='adult'}">${L('优雅','Elegant')}</button></div></div>
+  <div class="av-grid">${list.map(v=>`<button class="av-opt" data-act="av-pick" data-v="${v}" aria-pressed="${a.t==='emoji'&&a.v===v}" aria-label="${v}">${v}</button>`).join('')}</div>
+  <div class="opt-row"><span>${L('底色','Background color')}</span><div class="chips">${AV_COL.map(c=>`<button class="sw" style="background:${c}" data-act="av-col" data-c="${c}" aria-pressed="${sel===c}" aria-label="${c}"></button>`).join('')}</div></div>
+  <div class="btns"><label class="btn" for="av-photo">${L('上传我的照片','Upload my photo')}</label><input type="file" id="av-photo" accept="image/*" hidden>${u.avatar?`<button class="btn" data-act="av-clear">${L('用字母头像','Use initials')}</button>`:''}</div>
+  <p class="small muted">${L('照片会裁成圆形显示。真实版把照片存在老师的 Drive 里，只有老师和你的家人看得到。','Photos are cropped to a circle. On the real site they are stored in the teacher\'s Drive and only the teacher and your family can see them.')}</p>
+  ${kidUser?`<div class="opt-row"><span>${L('背景风格','Background style')}</span><div class="chips"><button class="chip" data-act="self-style" data-st="" aria-pressed="${!u.theme}">${L('按年龄自动','Auto by age')}</button>${Object.entries(STYLES).map(([k,v])=>`<button class="chip" data-act="self-style" data-st="${k}" aria-pressed="${u.theme===k}">${nm(v.n)}</button>`).join('')}</div></div>`:''}
+  ${state.role==='admin'?`<div class="opt-row"><span>${L('工作室 logo（显示在每个页面左上角）','Studio logo (top left of every page)')}</span><div class="btns"><label class="btn" for="logo-file">${L('选择 logo 图片','Choose logo image')}</label><input type="file" id="logo-file" accept="image/*" hidden>${state.logo?`<button class="btn" data-act="logo-clear">${L('恢复默认','Reset')}</button>`:''}</div><p class="small muted">${L('演示里只在这次打开期间有效；真实版会把 logo 文件放进网站的 assets 文件夹。','In the demo this lasts only while the page is open. On the real site the logo file goes into the site\'s assets folder.')}</p></div>`:''}`;
+}
+
+let modalFn=null;
+function drawModal(){if(!modalFn)return;document.getElementById('modal-root').innerHTML=`<div class="overlay" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true">${modalFn()}</div></div>`;updatePlayButtons();
+  if(state.up&&state.up.step==='cam'&&camStream){const v=document.getElementById('cam-live');if(v)v.srcObject=camStream}}
+function openModal(x){modalFn=typeof x==='function'?x:()=>x;drawModal()}
+function closeModal(){if(state.up)endUpload();modalFn=null;document.getElementById('modal-root').innerHTML=''}
+
+/* ---------- 渲染 ---------- */
+let toastTimer;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2800)}
+function render(){
+  document.documentElement.lang=LANG==='en'?'en':'zh-CN';
+  document.title=L('琴房课程系统','Piano Studio');
+  const app=document.getElementById('app');
+  applyTheme();
+  if(!state.role){app.innerHTML=viewLogin();return}
+  const V={overview:adminOverview,calendar:adminCalendar,students:adminStudents,record:adminRecord,library:adminLibrary,schedule:adminSchedule,notices:adminNotices,messages:adminMessages,resources:adminResources,points:adminPoints,flow:adminFlow,home:stuHome,phome:parentHome,learning:stuLearning,records:stuRecords,homework:stuHomework,music:stuMusic,portfolio:stuPortfolio,uresources:userResources,unotices:userNotices,umessages:userMessages,mypoints:stuPoints};
+  const fb=state.role==='admin'?adminOverview:state.role==='parent'?parentHome:stuHome;
+  app.innerHTML=shell((V[state.tab]||fb)());
+  updatePlayButtons();
+  if(state.celebPending){state.celebPending=false;maybeCelebrate()}
+}
+const okToast=()=>L(state.auth.remember?'已登录 · 这台设备 90 天内不用再输验证码':'已登录 · 关闭浏览器后需要重新登录',state.auth.remember?'Signed in · no code needed on this device for 90 days':'Signed in · you\'ll need a code again after closing the browser');
+
+/* ---------- 交互 ---------- */
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const a=el.dataset.act;
+  if(a==='close-bg'&&e.target!==el)return;
+  const lid=el.dataset.lid,sid=el.dataset.sid;
+  switch(a){
+    case 'lang':LANG=LANG==='en'?'zh':'en';try{localStorage.setItem('piano-studio-lang',LANG)}catch(_){}
+      if(state.auth.err)state.auth.err='';render();if(modalFn)drawModal();toast(L('已切换到中文','Switched to English'));return;
+    case 'login':enterAs({r:el.dataset.r,id:el.dataset.id});toast(okToast());break;
+    case 'logout':stopPlay();closeModal();state.role=null;state.sid=null;state.pid=null;state.auth={...state.auth,step:'email',code:null,err:'',matches:[]};break;
+    case 'fill-email':state.auth.email=el.dataset.email;state.auth.err='';break;
+    case 'auth-back':state.auth={...state.auth,step:'email',code:null,err:'',matches:[]};break;
+    case 'auth-resend':state.auth.code=String(Math.floor(100000+Math.random()*900000));state.auth.err='';toast(L('新的验证码已发出，旧的作废','New code sent; the old one no longer works'));break;
+    case 'tab':state.tab=el.dataset.tab;markSeen(state.tab);window.scrollTo(0,0);break;
+    case 'sel':state.selStudent=sid;break;
+    case 'reset':stopPlay();Object.assign(state,seed(),{rules:{...defaultRules}});toast(L('已恢复示例数据','Sample data reset'));break;
+    case 'pf':state.pfFilter=el.dataset.f;break;
+    case 'orig':state.showOrig=!state.showOrig;break;
+    case 'remind':openModal(()=>modalRemind(lid));return;
+    case 'tuition-mail':openModal(()=>modalTuition(sid));return;
+    case 'ics':openModal(()=>modalIcs(lid));return;
+    case 'hw-mail':{const id=el.dataset.aid;openModal(()=>modalHwMail(id));return}
+    case 'close':case 'close-bg':closeModal();return;
+    case 'send':{const l=state.lessons.find(x=>x.id===lid);l.remindedAt=+now;closeModal();toast(L(`演示：确认邮件已发给 ${stu(l.sid).name}`,`Demo: confirmation sent to ${stu(l.sid).name}`));break}
+    case 'send-t':closeModal();toast(L(`演示：学费提醒已发给 ${stu(sid).name}`,`Demo: tuition reminder sent to ${stu(sid).name}`));return;
+    case 'paid':{const s=stu(sid);s.paid++;s.claimed=false;toast(L(`已记录 ${s.name} 第 ${s.paid} 期学费`,`Recorded term ${s.paid} tuition for ${s.name}`));break}
+    case 'confirm':{const l=state.lessons.find(x=>x.id===lid);if(!l.confirmedAt){l.confirmedAt=Date.now();toast(L(`已确认 ${fmtD(l.date)} 的课 · +${state.rules.confirm} 分 · 已写入老师日历`,`Confirmed ${fmtD(l.date)} · +${state.rules.confirm} · added to the teacher's calendar`))}closeModal();break}
+    case 'sign':{const l=state.lessons.find(x=>x.id===lid);l.signedAt=Date.now();toast(L(`第 ${l.n} 节已签字 · +${state.rules.sign} 分`,`Lesson ${l.n} signed · +${state.rules.sign}`));break}
+    case 'sel-col':state.selCol=el.dataset.cid;break;
+    case 'col-mode':colOf(state.selCol).mode=el.dataset.mode;break;
+    case 'col-grp':{const c=colOf(state.selCol),g=el.dataset.g;c.groups=c.groups.includes(g)?c.groups.filter(x=>x!==g):[...c.groups,g];break}
+    case 'col-stu':{const c=colOf(state.selCol);c.students=c.students.includes(sid)?c.students.filter(x=>x!==sid):[...c.students,sid];break}
+    case 'sync':toast(L(`演示：已扫描 Drive › 伴奏曲库 › ${nm(colOf(state.selCol).name)}，没有新文件`,`Demo: scanned Drive › Accompaniments › ${nm(colOf(state.selCol).name)}; no new files`));return;
+    case 'play':playTrack(el.dataset.tid);return;
+    case 'dl':toast(L(`演示：真实版会下载 ${nm(trk(el.dataset.tid).title)}.mp3`,`Demo: the real site downloads ${nm(trk(el.dataset.tid).title)}.mp3`));return;
+    case 'yt-retry':{const x=state.assigns.find(y=>y.id===el.dataset.aid);x.yt='ok';toast(L(`已重新转存 ${pieceName(x)}，作品集已显示`,`${pieceName(x)} transferred; it now shows in the portfolio`));break}
+    case 'up-open':state.up={aid:el.dataset.aid,step:'choose',err:'',file:null,pct:0};openModal(modalUpload);return;
+    case 'cam-start':startCam();return;
+    case 'rec-toggle':toggleRec();return;
+    case 'up-back':stopCam();state.up.step='choose';state.up.file=null;state.up.chkV=state.up.chkA=false;drawModal();return;
+    case 'up-go':startUpload();return;
+    case 'child':stopPlay();state.sid=sid;markSeen(state.tab);toast(L(`现在看的是 ${stu(sid).name}`,`Now viewing ${stu(sid).name}`));break;
+    case 'child-go':stopPlay();state.sid=sid;state.tab=el.dataset.tab;markSeen(state.tab);window.scrollTo(0,0);break;
+    case 'av-open':state.avPal=null;openModal(modalAvatar);return;
+    case 'av-pal':state.avPal=el.dataset.p;drawModal();return;
+    case 'av-pick':{const u=currentUser();u.avatar={t:'emoji',v:el.dataset.v,c:(u.avatar&&u.avatar.c)||AV_COL[0]};drawModal();break}
+    case 'av-col':{const u=currentUser();const v=(u.avatar&&u.avatar.t==='emoji')?u.avatar.v:(state.role==='student'&&u.kind==='child'?KID_AV[0]:ADULT_AV[0]);u.avatar={t:'emoji',v,c:el.dataset.c};drawModal();break}
+    case 'av-clear':currentUser().avatar=null;drawModal();break;
+    case 'logo-clear':state.logo=null;drawModal();break;
+    case 'self-style':currentUser().theme=el.dataset.st||null;drawModal();break;
+    case 'stu-style':stu(state.selStudent).theme=el.dataset.st||null;break;
+    case 'stu-par':{const p=par(el.dataset.pid);p.kids=p.kids.includes(sid)?p.kids.filter(x=>x!==sid):[...p.kids,sid];toast(p.kids.includes(sid)?L(`已把 ${stu(sid).name} 配对到 ${nm(p.name)}`,`${stu(sid).name} is now paired with ${nm(p.name)}`):L(`已解除 ${stu(sid).name} 和 ${nm(p.name)} 的配对`,`${stu(sid).name} is no longer paired with ${nm(p.name)}`));break}
+    case 'par-new':toast(L('演示：真实版会在这里填家长邮箱，并发一封邀请邮件','Demo: the real site asks for the parent\'s email and sends an invitation'));return;
+    case 'book-done':stu(sid).books[+el.dataset.i].s='done';break;
+    case 'book-del':stu(sid).books.splice(+el.dataset.i,1);break;
+    case 'pay-claim':stu(sid).claimed=true;toast(L('已通知老师，收到款后老师会记录。','The teacher has been told and will record it once received.'));break;
+    case 'celeb-view':{const c=celebrations(state.sid).find(x=>x.k===el.dataset.k);if(c)openModal(()=>modalCelebrate(c,state.sid));return}
+    case 'cal-prev':state.calWeek=+mondayOf(new Date(state.calWeek-2*DAY));break;
+    case 'cal-next':state.calWeek=+mondayOf(new Date(state.calWeek+9*DAY));break;
+    case 'cal-today':state.calWeek=+mondayOf(now);break;
+    case 'cal-open':{const l=state.lessons.find(x=>x.id===lid);state.rs={lid:l.id,sid:l.sid,date:l.date,dur:l.dur};openModal(modalResched);return}
+    case 'cal-proj':state.rs={lid:null,sid,date:+el.dataset.ts,dur:stu(sid).dur};openModal(modalResched);return;
+    case 'rs-save':{
+      const R=state.rs,nd=new Date(document.getElementById('rs-dt').value).getTime();
+      if(!nd){toast(L('请填日期和时间','Enter a date and time'));return}
+      const dur=+document.getElementById('rs-dur').value,notify=document.getElementById('rs-notify').checked,s=stu(R.sid);
+      let l,created=false;
+      if(R.lid){l=state.lessons.find(x=>x.id===R.lid);if(nd!==l.date){l.changedFrom=l.date;l.confirmedAt=null;l.remindedAt=null}l.date=nd;l.dur=dur}
+      else{l={id:`${R.sid}-s${Date.now()}`,sid:R.sid,n:lessonsOf(R.sid).length+1,date:nd,dur,status:'scheduled',confirmedAt:null,signedAt:null,notes:null};state.lessons.push(l);created=true}
+      if(notify)pushNotice(R.sid,'both',
+        [`${created?'新排了一节课':'上课时间调整'}：${fmtD(nd,'zh')} ${fmtT(nd)}`,`${created?'New lesson':'Lesson time changed'}: ${fmtD(nd,'en')} ${fmtT(nd)}`],
+        [`${s.name} 的钢琴课在 ${fmtD(nd,'zh')} ${fmtT(nd)}，${dur} 分钟。请重新确认，日历邀请已更新。`,`${s.name}'s piano lesson is ${fmtD(nd,'en')} ${fmtT(nd)}, ${dur} minutes. Please confirm again. The calendar invite was updated.`]);
+      state.rs=null;closeModal();
+      toast(notify?L(`已保存，已通知 ${s.name}${hasParent(s)?' 和家长':''}`,`Saved. ${s.name}${hasParent(s)?' and the parent':''} notified`):L('已保存','Saved'));break}
+    case 'sel-msg':case 'reply-go':state.msgSel=sid;msgsOf(sid).forEach(m=>{if(m.from!=='teacher')m.readT=true});if(a==='reply-go')state.tab='messages';break;
+    case 'sel-res':state.selRes=el.dataset.rid;break;
+    case 'res-mode':state.resources.find(r=>r.id===state.selRes).mode=el.dataset.mode;break;
+    case 'res-grp':{const r=state.resources.find(x=>x.id===state.selRes),g=el.dataset.g;r.groups=r.groups.includes(g)?r.groups.filter(x=>x!==g):[...r.groups,g];break}
+    case 'res-stu':{const r=state.resources.find(x=>x.id===state.selRes);r.students=r.students.includes(sid)?r.students.filter(x=>x!==sid):[...r.students,sid];break}
+    case 'res-fill':openModal(modalSheet);return;
+    case 'res-dl':{const r=state.resources.find(x=>x.id===el.dataset.rid);
+      if(r.kind==='staff'||r.kind==='grand')saveFile(r.kind==='grand'?'blank-grand-staff.svg':'blank-staff-paper.svg',staffSheetSvg(r.kind==='grand'));
+      else if(r.file&&r.file.blob)saveFile(r.file.name,r.file.blob);
+      else toast(L(`演示：真实版会下载 ${r.file?r.file.name:'文件'}`,`Demo: the real site downloads ${r.file?r.file.name:'the file'}`));
+      return}
+    case 'ws-click':{
+      const sv=document.getElementById('ws-svg'),r=sv.getBoundingClientRect(),H=wsH();
+      const x=(e.clientX-r.left)*WS.W/r.width,y=(e.clientY-r.top)*H/r.height;
+      const k=Math.max(0,Math.min(WS.n-1,Math.floor((y-WS.top+30)/WS.gap))),y0=WS.top+k*WS.gap,step=WS.sp/2;
+      const j=Math.max(-5,Math.min(13,Math.round((y-y0)/step))),ny=y0+j*step,nx=Math.max(54,Math.min(WS.W-30,Math.round((x-54)/30)*30+54));
+      const i=state.ws.notes.findIndex(n=>n.x===nx&&n.y===ny);
+      if(i>=0)state.ws.notes.splice(i,1);else state.ws.notes.push({x:nx,y:ny});
+      drawModal();return}
+    case 'ws-undo':state.ws.notes.pop();drawModal();return;
+    case 'ws-clear':state.ws.notes=[];drawModal();return;
+    case 'ws-save':wsPng().then(b=>saveFile('staff-practice.png',b)).catch(()=>toast(L('没能生成图片','Could not make the image')));return;
+    case 'ws-send':toast(L('演示：真实版会把这张练习发给老师','Demo: the real site sends this worksheet to your teacher'));return;
+    case 'redeem':{const w=state.rewards.find(x=>x.id===el.dataset.rid);if(balance(state.sid)<w.cost){toast(L('积分不够','Not enough points'));return}
+      state.redemptions.push({id:'x'+Date.now(),sid:state.sid,rid:w.id,name:w.name,cost:w.cost,ts:Date.now(),done:false});
+      toast(L(`已兑换“${nm(w.name)}”，老师会确认`,`Redeemed "${nm(w.name)}". Your teacher will confirm`));break}
+    case 'rw-done':state.redemptions.find(x=>x.id===el.dataset.xid).done=true;break;
+    default:return;
+  }
+  render();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalFn)closeModal()});
+document.addEventListener('input',e=>{
+  const k=e.target.dataset&&e.target.dataset.rule;if(!k)return;
+  const v=parseInt(e.target.value,10);if(Number.isNaN(v))return;
+  state.rules[k]=v;const p=document.getElementById('rules-preview');if(p)p.innerHTML=leaderboard();
+});
+document.addEventListener('change',e=>{
+  const tg=e.target;
+  if(tg.id==='demo-day'){state.demoDay=tg.value||null;render();toast(tg.value?L(`预览日期：${tg.value}`,`Previewing ${tg.value}`):L('回到真实日期','Back to the real date'));return}
+  if(tg.dataset&&tg.dataset.sf){const s=stu(state.selStudent),k=tg.dataset.sf;let v=tg.type==='checkbox'?tg.checked:tg.value;
+    if(k==='adj')v=parseInt(v,10)||0;else if(v==='')v=null;s[k]=v;render();return}
+  if(tg.id==='av-photo'||tg.id==='logo-file'){const f=tg.files&&tg.files[0];if(!f)return;
+    if(!f.type.startsWith('image/')){toast(L('请选一张图片','Please choose an image'));return}
+    const url=URL.createObjectURL(f);if(tg.id==='logo-file')state.logo=url;else currentUser().avatar={t:'photo',url};
+    render();drawModal();return}
+  if(tg.id==='chk-v'||tg.id==='chk-a'){const U=state.up;if(U){if(tg.id==='chk-v')U.chkV=tg.checked;else U.chkA=tg.checked;const b=document.querySelector('[data-act="up-go"]');if(b)b.disabled=!(U.chkV&&U.chkA)}return}
+  if(tg.dataset&&tg.dataset.rwcost){const w=state.rewards.find(x=>x.id===tg.dataset.rwcost);w.cost=Math.max(1,parseInt(tg.value,10)||1);toast(L('已更新','Updated'));return}
+  if(tg.dataset&&tg.dataset.rwon){state.rewards.find(x=>x.id===tg.dataset.rwon).on=tg.checked;return}
+  if(tg.id==='kid-switch'){stopPlay();state.sid=tg.value;render();toast(L(`现在看的是 ${stu(tg.value).name}`,`Now viewing ${stu(tg.value).name}`));return}
+  if(tg.id==='login-remember'){state.auth.remember=tg.checked;return}
+  if(tg.dataset&&tg.dataset.colDl){const c=colOf(tg.dataset.colDl);c.download=tg.checked;toast(c.download?L(`${nm(c.name)}：学生可以下载`,`${nm(c.name)}: students can download`):L(`${nm(c.name)}：只能在线播放`,`${nm(c.name)}: stream only`));return}
+  if((tg.id==='up-cam'||tg.id==='up-pick')&&state.up){
+    const f=tg.files&&tg.files[0];if(!f)return;
+    if(f.type&&!f.type.startsWith('video/')){state.up.err=L('这不是视频文件，请选一段视频。','That isn\'t a video file. Please choose a video.');drawModal();return}
+    let url=null;try{url=URL.createObjectURL(f)}catch(_){}
+    state.up.file={name:f.name,size:f.size,url,dur:null};state.up.step='review';state.up.err='';drawModal();
+  }
+});
+document.addEventListener('submit',e=>{
+  e.preventDefault();
+  const A=state.auth;
+  if(e.target.id==='login-email-form'){
+    const em=document.getElementById('login-email').value.trim().toLowerCase();A.email=em;
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){A.err=L('邮箱格式不对，请再检查一下。','That email doesn\'t look right. Please check it.');render();return}
+    const m=[];if(ADMIN_EMAILS.includes(em))m.push({r:'admin'});
+    state.parents.filter(p=>p.email===em).forEach(p=>m.push({r:'parent',id:p.id}));
+    state.students.filter(s=>s.email===em).forEach(s=>m.push({r:'student',id:s.id}));
+    if(!m.length){A.err=L('这个邮箱还没有加入琴房。请确认拼写，或者请老师把它加进学生名单。','This email isn\'t in the studio yet. Check the spelling or ask the teacher to add it.');render();return}
+    A.matches=m;A.code=String(Math.floor(100000+Math.random()*900000));A.err='';A.step='code';render();
+    const c=document.getElementById('login-code');if(c)c.focus();return;
+  }
+  if(e.target.id==='login-code-form'){
+    const v=document.getElementById('login-code').value.replace(/\D/g,'');
+    if(v!==A.code){A.err=L('验证码不对，请再看一下邮件里的 6 位数字。','That code doesn\'t match. Check the 6 digits in the email.');render();return}
+    A.err='';
+    if(A.matches.length>1){A.step='pick';render();return}
+    enterAs(A.matches[0]);render();toast(okToast());return;
+  }
+  if(e.target.id==='rec-form'){
+    const sid=document.getElementById('rec-student').value;
+    const date=new Date(document.getElementById('rec-date').value).getTime()||Date.now();
+    const p=document.getElementById('rec-pieces').value.split('\n').map(x=>x.split('|').map(y=>y.trim())).filter(x=>x[0]).map(x=>[x[0],x[1]||'',ST_PARSE[(x[2]||'').toLowerCase()]||'review']);
+    if(!p.length){toast(L('请至少填一首曲目','Add at least one piece'));return}
+    const notes={p,f:document.getElementById('rec-focus').value,t:document.getElementById('rec-tempo').value,hw:document.getElementById('rec-hw').value};
+    let l=lessonsOf(sid).find(x=>x.status==='scheduled'&&Math.abs(x.date-date)<1.5*DAY);
+    if(l){l.status='done';l.date=date;l.notes=notes;
+      const s=stu(sid),nx=new Date(date);nx.setDate(nx.getDate()+7);nx.setHours(s.h,s.m,0,0);
+      state.lessons.push({id:`${sid}-${l.n+1}-${Date.now()}`,sid,n:l.n+1,date:+nx,dur:s.dur,status:'scheduled',confirmedAt:null,signedAt:null,notes:null});
+    }else{
+      l={id:`${sid}-x${Date.now()}`,sid,n:doneOf(sid).length+1,date,dur:stu(sid).dur,status:'done',confirmedAt:null,signedAt:null,notes};
+      state.lessons.push(l);
+      state.lessons.filter(x=>x.sid===sid&&x.status==='scheduled').forEach(x=>x.n++);
+    }
+    const dueV=document.getElementById('rec-due').value;const due=dueV?new Date(dueV+'T20:00').getTime():date+6*DAY;
+    const acc=[...document.querySelectorAll('input[name="rec-acc"]:checked')].map(x=>x.value);
+    const keep=document.getElementById('rec-acc-keep').value;
+    state.assigns.push({id:'a-'+l.id+Date.now(),lid:l.id,sid,title:notes.hw,piece:p[0],due,submittedAt:null,featured:p.some(x=>x[2]==='done'),video:null,
+      acc,accDays:keep==='keep'?null:+keep,yt:null});
+    toast(L(`已保存 ${stu(sid).name} 第 ${l.n} 节，签字请求已发出${acc.length?`，附带 ${acc.length} 首伴奏`:''}`,`Saved lesson ${l.n} for ${stu(sid).name}; sign-off request sent${acc.length?` with ${acc.length} accompaniment${acc.length>1?'s':''}`:''}`));
+    state.tab='students';state.selStudent=sid;window.scrollTo(0,0);render();
+  }
+  if(e.target.id==='notice-form'){
+    const to=document.getElementById('nt-to').value,aud=document.getElementById('nt-aud').value,title=document.getElementById('nt-title').value.trim(),body=document.getElementById('nt-body').value.trim();
+    if(!title){toast(L('请写标题','Add a title'));return}
+    state.notices.unshift({id:'n'+(++_nid),ts:Date.now(),to:to==='all'?{scope:'all'}:{scope:'student',sid:to},aud:to==='all'?'both':aud,title,body,read:{}});
+    toast(L('通知已发出','Notice sent'));render();return;
+  }
+  if(e.target.id==='msg-reply-form'){
+    const t=document.getElementById('msg-text').value.trim();if(!t)return;
+    const sid=state.msgSel||state.students[0].id;
+    state.messages.push({id:'m'+Date.now(),sid,from:'teacher',ts:Date.now(),text:t,readT:true,readU:{}});
+    toast(L('已回复，学生和家长会收到提醒','Sent. The student and parent are alerted'));render();return;
+  }
+  if(e.target.id==='umsg-form'){
+    const t=document.getElementById('umsg-text').value.trim();if(!t)return;
+    state.messages.push({id:'m'+Date.now(),sid:state.sid,from:state.role,pid:state.pid,ts:Date.now(),text:t,readT:false,readU:{}});
+    toast(L('已发给老师，老师会收到提醒','Sent. Your teacher will be alerted'));render();return;
+  }
+  if(e.target.id==='res-form'){
+    const title=document.getElementById('res-title').value.trim(),f=document.getElementById('res-file').files[0];
+    if(!title){toast(L('请写名称','Add a name'));return}
+    const r={id:'r'+Date.now(),kind:'file',title,desc:document.getElementById('res-desc').value.trim(),mode:'students',groups:[],students:[],added:Date.now(),file:f?{name:f.name,blob:f}:{name:'file.pdf'}};
+    state.resources.unshift(r);state.selRes=r.id;toast(L('已上传。现在选择哪些学生能看到。','Uploaded. Now choose who can see it.'));render();return;
+  }
+  if(e.target.id==='book-form'){
+    const n=document.getElementById('book-name').value.trim();if(!n)return;
+    const s=stu(state.selStudent);(s.books=s.books||[]).unshift({n:[n,n],s:'current'});render();return;
+  }
+  if(e.target.id==='rw-form'){
+    const n=document.getElementById('rw-name').value.trim(),c=parseInt(document.getElementById('rw-cost').value,10)||30;if(!n)return;
+    state.rewards.push({id:'w'+Date.now(),name:[n,n],cost:c,on:true});render();return;
+  }
+  if(e.target.id==='sch-form'){
+    const sid=document.getElementById('sch-student').value;
+    const d=document.getElementById('sch-date').value,t=document.getElementById('sch-time').value;
+    const date=new Date(`${d}T${t}`).getTime();if(!date){toast(L('请填日期和时间','Enter a date and time'));return}
+    const n=lessonsOf(sid).length+1;
+    const l={id:`${sid}-s${Date.now()}`,sid,n,date,dur:+document.getElementById('sch-dur').value,status:'scheduled',confirmedAt:null,signedAt:null,notes:null};
+    state.lessons.push(l);render();openModal(()=>modalRemind(l.id));
+  }
+});
+
+render();
+})();
+</script>
+
+</body></html>
