@@ -6,7 +6,7 @@
 
 | 名字 | 是什么 | 在哪 |
 |---|---|---|
-| 网站 | 学生、家长、老师看到的页面 | GitHub Pages（已经开好） |
+| 网站 | 学生、家长、老师看到的页面 | GitHub Pages（已开好）：<https://mingpiano.github.io/portal/> |
 | 后台 | 负责登录、存数据、发邮件 | Google Apps Script（下面要建） |
 | 数据表 | 所有学生和课程记录，老师能直接打开看 | Google 表格（后台自动建） |
 
@@ -63,13 +63,13 @@ npx @google/clasp push
 1. 编辑器右上角点 **部署** → **新建部署**。
 2. 点“选择类型”旁边的齿轮 → **Web 应用**。
 3. 填：**执行身份：我**；**谁有权访问：任何人**。
-4. 点 **部署**，然后**复制**出现的“网页应用网址”（以 `/exec` 结尾）。先粘贴到记事本里留着。网址是https://script.google.com/macros/s/AKfycbyxYOBJRIdYzAtM0qu7ErtqV-0wOy7QPy5EffW8btZZNy9gdsoVKgwHyEW45OUybTAN/exec
+4. 点 **部署**，然后**复制**出现的“网页应用网址”（以 `/exec` 结尾）。先粘贴到记事本里留着。
 
 ### 第 5 步　告诉后台网站的地址
 
 1. 编辑器左边点齿轮 **项目设置**。
 2. 拉到最下面“脚本属性” → **添加脚本属性**。
-3. 属性填 `SITE_URL`，值填：`https://xiesiqiao.github.io/mingstudio_portal/`（注意结尾有斜杠）。保存。
+3. 属性填 `SITE_URL`，值填：`https://mingpiano.github.io/portal/`（注意结尾有斜杠）。保存。
 
 ### 第 6 步　告诉网站后台的地址
 
@@ -86,11 +86,14 @@ npx @google/clasp push
    git push
    ```
 4. 到 GitHub 仓库的 **Actions** 页面，等最新那一项出现绿色对勾（1–2 分钟）。
-   如果是红色，点进去选 **Re-run all jobs**（上次失败是因为 Pages 当时还没开）。
+   如果是红色，点进去选 **Re-run all jobs**。还是红的，检查仓库 Settings → Pages → Source 是否选了 **GitHub Actions**，且仓库是 Public。
+
+> **`git push` 要求输入密码？** GitHub 不再接受登录密码，要用“访问令牌”：打开 <https://github.com/settings/tokens/new>，选 classic 令牌，勾选 **repo**，生成后复制。终端提示 `Password` 时粘贴它（屏幕上看不到字符是正常的，直接回车）。令牌等同密码，不要发给别人，也不要写进文件。
+> 提示 403 或 `Authentication failed`，多半是令牌没勾 **repo**，或钥匙串里缓存了旧密码。先运行 `printf "protocol=https\nhost=github.com\n\n" | git credential-osxkeychain erase`，再重新 `git push`。
 
 ### 第 7 步　试一试
 
-打开 <https://xiesiqiao.github.io/mingstudio_portal/>，页面顶部会有“测试环境”提示条。
+打开 <https://mingpiano.github.io/portal/>，页面顶部会有“测试环境”提示条。
 
 | 想看谁的视角 | 登录邮箱 |
 |---|---|
@@ -108,7 +111,9 @@ npx @google/clasp push
 
 ## 第二轮：换成太太的账号
 
-测试没问题后：
+测试没问题后（测试已跑通，现在做这一轮）：
+
+> 网站地址不变，仍是 <https://mingpiano.github.io/portal/>。太太的后台项目是**另一个**，所以只有 `/exec` 网址和 `SITE_URL` 要重新设，仓库和 GitHub 设置都不用动。
 
 1. 终端输入 `npx @google/clasp logout`，再 `npx @google/clasp login`，这次选**太太的 Google 账号**。
 2. 重复第 2 步，但把第二条命令改成保存为 prod：
@@ -145,5 +150,19 @@ npx @google/clasp push
 | 想知道现在是测试还是正式 | 编辑器运行 **printStatus**，看日志第一行 |
 | 提示 “User has not enabled the Apps Script API” | 做“开始之前”的第 4 步 |
 | Actions 红色 | 点进去 Re-run；还不行就把报错文字发给我 |
+| `git push` 一直要密码 / 403 | 见第 6 步下面的“访问令牌”说明 |
+| 邮件里的登录链接打不开或地址不对 | 脚本属性 `SITE_URL` 没设或写错，应为 `https://mingpiano.github.io/portal/` |
+
+---
+
+## 网址与仓库速查
+
+| 项目 | 位置 |
+|---|---|
+| 网站（学生、家长、老师入口） | <https://mingpiano.github.io/portal/> |
+| 代码仓库 | `github.com/mingpiano/portal`（组织 `mingpiano` 名下，保持 Public） |
+| 将来的公开首页 | 新建仓库 `mingpiano.github.io`，就是网站根目录；首页右上角放“登录”，指向 `/portal/` |
+| Mac 上的文件夹 | 名字仍是 `mingstudio_portal`，不影响使用 |
+| 远程地址 | `git remote set-url origin https://github.com/mingpiano/portal.git` |
 
 **邮件额度：** 普通 Gmail 每天最多发约 100 封。系统在剩余不到 10 封时会停发学生邮件，把额度留给老师自己。
