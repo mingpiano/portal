@@ -15,6 +15,7 @@ function actions_() {
     'auth.request': { fn: authRequest_, write: true },
     'auth.verify':  { fn: authVerify_, write: true },
     'auth.choose':  { fn: authChoose_, write: true },
+    'auth.kid':     { fn: authKid_, write: true },
     'auth.logout':  { fn: authLogout_, write: true, roles: ALL_ROLES },
 
     'bootstrap':    { fn: function () { return {}; }, roles: ALL_ROLES, state: true },
@@ -33,6 +34,16 @@ function actions_() {
     'parents.save':     { fn: hParentSave_, write: true, state: true, roles: ['admin'] },
     'parents.archive':  { fn: hParentArchive_, write: true, state: true, roles: ['admin'] },
     'pairs.set':        { fn: hPairSet_, write: true, state: true, roles: ['admin'] },
+    'res.begin':        { fn: hResBegin_, write: true, roles: ['admin'] },
+    'res.chunk':        { fn: hResChunk_, write: true, roles: ['admin'] },
+    'res.finish':       { fn: hResFinish_, write: true, state: true, roles: ['admin'] },
+    'res.link':         { fn: hResLink_, write: true, state: true, roles: ['admin'] },
+    'res.update':       { fn: hResUpdate_, write: true, state: true, roles: ['admin'] },
+    'res.delete':       { fn: hResDelete_, write: true, state: true, roles: ['admin'] },
+    'res.get':          { fn: hResGet_, roles: ALL_ROLES },
+    'res.seen':         { fn: hResSeen_, write: true, state: true, roles: ['parent', 'student'] },
+    'kidcode.set':      { fn: hKidCodeSet_, write: true, state: true, roles: ['admin'] },
+    'kidcode.clear':    { fn: hKidCodeClear_, write: true, state: true, roles: ['admin'] },
     'books.save':       { fn: hBooksSave_, write: true, state: true, roles: ['admin'] },
     'lessons.log':      { fn: hLessonLog_, write: true, state: true, roles: ['admin'] },
     'lessons.delete':   { fn: hLessonDelete_, write: true, state: true, roles: ['admin'] },
@@ -54,9 +65,10 @@ function doPost(e) {
   var out;
   try {
     var raw = (e && e.postData && e.postData.contents) || '';
-    if (raw.length > 200000) fail_('too_large');
+    if (raw.length > 1400000 || (raw.length > 200000 && raw.slice(0, 80).indexOf('res.chunk') < 0)) fail_('too_large'); // 只有上传文件的一段（约 1.3MB）允许这么大，其余操作最多 200KB
     var req;
     try { req = JSON.parse(raw); } catch (x) { fail_('bad_request', 'json'); }
+    if (raw.length > 200000 && !(req && req.a === 'res.chunk')) fail_('too_large');
     out = handle_(req);
   } catch (err) {
     out = errorResponse_(err);

@@ -5,7 +5,7 @@
  */
 import { t, tx, getLang } from './i18n.js';
 import { festGreeting } from './theme.js';
-import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, AVATAR_EMOJI, AVATAR_COLORS, TZ_LIST, tzName, tzAbbr, fmtClock, fmtDateZ, fmtWhenZ, daysUntil, nowFields, wallFields, fieldsToMs, TEMPO_NOTES, tempoText, noteSym } from './util.js';
+import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, AVATAR_EMOJI, AVATAR_COLORS, TZ_LIST, tzName, tzAbbr, fmtClock, fmtDateZ, fmtWhenZ, daysUntil, nowFields, wallFields, fieldsToMs, TEMPO_NOTES, tempoText, noteSym, fmtSize } from './util.js';
 
 const lg = () => getLang();
 const byId = (arr, id) => arr.find(x => x.id === id);
@@ -41,8 +41,8 @@ const stuTz = (S, sid) => (byId(S.data.students, sid) || {}).tz || S.data.teache
 const viewTz = (S, sid) => (role(S) === 'admin' ? S.data.teacherTz : stuTz(S, sid));
 export function curKid(S) { const ks = S.data.students; return ks.find(k => k.id === S.kid) || ks[0] || null; }
 export function tabsFor(S) {
-  if (role(S) === 'admin') return ['overview', 'students', 'record', 'notices', 'messages', 'points'];
-  const base = ['home', 'learning', 'lessons', 'homework', 'notices', 'messages'];
+  if (role(S) === 'admin') return ['overview', 'students', 'record', 'resources', 'notices', 'messages', 'points'];
+  const base = ['home', 'learning', 'lessons', 'homework', 'resources', 'notices', 'messages'];
   if (S.data.students.some(s => s.showPoints)) base.push('points');
   return base;
 }
@@ -62,7 +62,18 @@ export function loginView(S) {
       <label class="f">${t('login.email')}<input type="email" id="login-email" name="email" value="${esc(A.email)}" placeholder="you@example.com" autocomplete="email" inputmode="email"></label>
       ${err}
       <div class="btns"><button class="btn primary" type="submit" ${A.busy ? 'disabled' : ''}>${t(A.busy ? 'common.sending' : 'login.send')}</button></div>
-      <p class="small muted">${t('login.help')}</p></form>`;
+      <p class="small muted">${t('login.help')}</p>
+      <p class="small"><button class="btn link small" type="button" data-act="login-kid">${t('kid.link')}</button></p></form>`;
+  } else if (A.step === 'kid') {
+    body = `<form class="stack" style="gap:12px" data-form="login-kid" novalidate>
+      <p class="muted small">${t('kid.help')}</p>
+      <label class="f">${t('kid.name')}<input type="text" id="kid-name" name="name" value="${esc(A.kidName || '')}" autocomplete="username" maxlength="80" autocapitalize="none"></label>
+      <label class="f">${t('kid.code')}<input type="text" id="kid-code" name="code" class="code-input" inputmode="numeric" autocomplete="current-password" maxlength="9" placeholder="········"></label>
+      <label class="check"><input type="checkbox" id="kid-remember" name="remember" ${A.remember ? 'checked' : ''}>${t('login.remember')}</label>
+      ${err}
+      <div class="btns"><button class="btn primary" type="submit" ${A.busy ? 'disabled' : ''}>${t(A.busy ? 'common.checking' : 'kid.go')}</button>
+        <button class="btn link small" type="button" data-act="login-back">${t('kid.useEmail')}</button></div>
+      <p class="small muted">${t('kid.lost')}</p></form>`;
   } else if (A.step === 'code') {
     body = `<form class="stack" style="gap:12px" data-form="login-code" novalidate>
       <p>${t('login.sentTo', { email: A.email })}</p>
@@ -92,7 +103,7 @@ export function shell(S, body) {
   const d = S.data, me = d.me, L = lg();
   const tabs = tabsFor(S);
   const badge = k => {
-    const n = k === 'notices' && me.role !== 'admin' ? unreadNotices(S) : k === 'messages' ? unreadMsgs(S) : k === 'homework' ? hwOpenCount(S, (curKid(S) || {}).id) : 0;
+    const n = k === 'notices' && me.role !== 'admin' ? unreadNotices(S) : k === 'messages' ? unreadMsgs(S) : k === 'homework' ? hwOpenCount(S, (curKid(S) || {}).id) : k === 'resources' && me.role !== 'admin' ? newResCount(S) : 0;
     return n ? `<span class="badge" aria-label="${esc(tx('common.unread', { n }))}">${n}</span>` : '';
   };
   const showKids = me.role === 'parent' && d.students.length > 1 && S.tab !== 'home';
@@ -240,6 +251,85 @@ export function homeworkView(S) {
 
 /** 节庆期间首页顶上的问候（不在节庆期为空）。 */
 const festBanner = () => { const g = festGreeting(); return g ? `<div class="fest" role="note"><span class="fest-ic" aria-hidden="true">${g.ic}</span><b>${esc(g.n[lg() === 'zh' ? 0 : 1])}</b></div>` : ''; };
+
+/* ---------- 资源库 ---------- */
+export const newResCount = S => (S.data.resources || []).filter(r => r.isNew).length;
+const RES_ICON = r => (r.kind === 'link' ? '🔗' : /^audio\//.test(r.mime) ? '🎵' : /^video\//.test(r.mime) ? '🎬' : '📄');
+/** 文件分三类：pdf（能下载、打印）；音频和视频（只能在线播放）；链接（在新页面打开）。 */
+export const resKind = r => (r.kind === 'link' ? 'link' : /^audio\//.test(r.mime) ? 'audio' : /^video\//.test(r.mime) ? 'video' : 'pdf');
+const RES_ACCEPT = '.pdf,.mp3,.m4a,.wav,.ogg,.mp4,.webm';
+
+/** 选分享给谁：“所有学生”或勾选具体的学生（成人学生也在里面）。 */
+function sharePicker(S, all, sids) {
+  const act = S.data.students.filter(s => s.active);
+  return `<div class="f full"><span>${t('res.shareWith')}</span>
+    <div class="picklist"><label><input type="checkbox" name="all" ${all ? 'checked' : ''}> <b>${t('res.allStudents')}</b></label>
+      ${act.map(s => `<label><input type="checkbox" name="to" value="${esc(s.id)}" ${sids.includes(s.id) ? 'checked' : ''}>${esc(s.name)}${s.kind === 'adult' ? ` <span class="muted small">${t('stu.adult')}</span>` : ''}</label>`).join('')}</div>
+    <span class="small muted">${t('res.shareHelp')}</span></div>`;
+}
+const shareChips = (S, r) => (r.all ? `<span class="pill plain">${t('res.allStudents')}</span>` : (r.sids || []).map(i => { const s = byId(S.data.students, i); return s ? `<span class="pill plain">${esc(s.name)}</span>` : ''; }).join(''));
+
+/** 一条资源的操作按钮：PDF 下载+打印；音频视频只在线播放；链接新页面打开。 */
+function resActions(S, r) {
+  const k = resKind(r), busy = S.dl && S.dl.id === r.id;
+  const label = busy ? `${t('res.loading')} ${S.dl.done}/${S.dl.total}` : '';
+  if (k === 'link') return `<a class="btn sm primary" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${t('res.openLink')}</a>`;
+  if (k === 'pdf') return `<button class="btn sm primary" data-act="res-dl" data-id="${esc(r.id)}" ${S.dl ? 'disabled' : ''}>${busy ? label : '⬇ ' + t('res.download')}</button><button class="btn sm" data-act="res-print" data-id="${esc(r.id)}" ${S.dl ? 'disabled' : ''}>🖨 ${t('res.print')}</button>`;
+  return `<button class="btn sm primary" data-act="res-play" data-id="${esc(r.id)}" ${S.dl ? 'disabled' : ''}>${busy ? label : '▶ ' + t('res.play')}</button>`;
+}
+function resItem(S, r, admin) {
+  const isNew = !admin && (r.isNew || S.fresh.r.has(r.id));
+  const k = resKind(r);
+  return `<div class="res-item"><div class="res-ic" aria-hidden="true">${RES_ICON(r)}</div><div class="grow">
+    <div><b>${esc(r.title)}</b>${isNew ? ` ${pill('wait', t('res.new'))}` : ''}${admin && r.status === 'uploading' ? ` ${pill('bad', t('res.unfinished'))}` : ''}</div>
+    <div class="small muted">${r.kind === 'file' ? `${esc(r.name)} · ${fmtSize(r.size)}` : esc(r.url)} · ${esc(fmtD(r.ts, lg()))}${k === 'audio' || k === 'video' ? ` · ${t('res.onlineOnly')}` : ''}</div>
+    ${r.note ? `<div class="small">${esc(r.note)}</div>` : ''}
+    ${admin ? `<div class="chips">${shareChips(S, r)}</div>` : ''}</div>
+    <div class="btns">${r.status === 'uploading' ? '' : resActions(S, r)}${admin ? `<button class="btn sm" data-act="res-edit" data-id="${esc(r.id)}">${t('res.share')}</button><button class="btn sm" data-act="res-del" data-id="${esc(r.id)}">${t('common.delete')}</button>` : ''}</div></div>`;
+}
+export function resourcesView(S) {
+  const d = S.data, admin = role(S) === 'admin', list = d.resources || [];
+  if (!admin) {
+    return `<div class="stack"><div class="page-h"><h1>${t('tab.resources')}</h1><span class="muted">${t('res.sub')}</span></div>
+      <section class="card"><div class="rows">${list.map(r => resItem(S, r, false)).join('') || `<p class="muted">${t('res.none')}</p>`}</div></section>
+      <p class="small muted">${t('res.note')}</p></div>`;
+  }
+  const up = S.upload, kind = S.resKind || 'file';
+  return `<div class="stack"><div class="page-h"><h1>${t('tab.resources')}</h1><span class="muted">${t('res.subAdmin')}</span></div>
+    <section class="card"><form class="stack" data-form="res-add" novalidate><div class="form">
+      <div class="f full"><span>${t('res.what')}</span><div class="chips"><button type="button" class="chip" data-act="res-kind" data-k="file" aria-pressed="${kind === 'file'}">${t('res.kFile')}</button><button type="button" class="chip" data-act="res-kind" data-k="link" aria-pressed="${kind === 'link'}">${t('res.kLink')}</button></div></div>
+      ${kind === 'file'
+    ? `<div class="f full"><span>${t('res.file')}</span><label class="btn file-btn">${t('res.choose')}<input type="file" id="res-file" accept="${RES_ACCEPT}" data-change="res-file" hidden></label>
+          <span class="small muted" id="res-file-name">${S.upName ? `${esc(S.upName)} · ${fmtSize(S.upSize)}` : t('res.noFile')}</span><span class="small muted">${t('res.fileHelp')}</span></div>`
+    : `<label class="f full">${t('res.url')}<input type="url" id="res-url" name="url" maxlength="500" placeholder="https://…" inputmode="url"><span class="small muted">${t('res.urlHelp')}</span></label>`}
+      <label class="f full">${t('res.title')}<input type="text" id="res-title" name="title" maxlength="200"></label>
+      <label class="f full">${t('res.noteL')}<textarea id="res-note" name="note" maxlength="1000" style="min-height:60px"></textarea></label>
+      ${sharePicker(S, false, [])}
+    </div>
+    ${up ? `<div class="up-prog" role="status"><progress id="res-prog" max="${up.total}" value="${up.done}"></progress><span class="small" id="res-prog-text">${esc(tx('res.uploading', { a: up.done, b: up.total }))}</span></div>` : ''}
+    <div class="btns"><button class="btn primary" type="submit" ${up ? 'disabled' : ''}>${t(kind === 'file' ? 'res.upload' : 'res.addLink')}</button></div></form></section>
+    <div class="page-h"><h2>${t('res.library')}</h2><span class="small muted">${list.length}</span></div>
+    <section class="card"><div class="rows">${list.map(r => resItem(S, r, true)).join('') || `<p class="muted">${t('res.noneAdmin')}</p>`}</div></section></div>`;
+}
+export function reseditModal(S) {
+  const r = byId(S.data.resources, S.modal.id);
+  if (!r) return '';
+  return `<div class="card-h"><h2>${t('res.editTitle')}</h2><button class="btn sm" data-act="close">${t('common.close')}</button></div>
+    <form class="stack" data-form="res-update" data-id="${esc(r.id)}" novalidate><div class="form">
+      <label class="f full">${t('res.title')}<input type="text" name="title" value="${val(r.title)}" maxlength="200"></label>
+      <label class="f full">${t('res.noteL')}<textarea name="note" maxlength="1000" style="min-height:60px">${esc(r.note)}</textarea></label>
+      ${sharePicker(S, r.all, r.sids || [])}</div>
+      <div class="btns"><button class="btn primary" type="submit">${t('common.save')}</button></div></form>`;
+}
+/** 播放器：音频和视频只在线播放——没有下载按钮、禁用右键菜单；声音和画面来自已经取回浏览器内存里的数据。 */
+export function resviewModal(S) {
+  const v = S.viewer, r = byId(S.data.resources, v.id);
+  if (!r) return '';
+  const media = resKind(r) === 'video'
+    ? `<video class="nodl" src="${esc(v.url)}" controls controlsList="nodownload noplaybackrate" disablepictureinpicture playsinline></video>`
+    : `<audio class="nodl" src="${esc(v.url)}" controls controlsList="nodownload noplaybackrate"></audio>`;
+  return `<div class="card-h"><h2>${esc(r.title)}</h2><button class="btn sm" data-act="viewer-close">${t('common.close')}</button></div>${media}<p class="small muted">${t('res.onlineNote')}</p>`;
+}
 
 /* ---------- 学生 / 家长：首页 ---------- */
 export function homeView(S) {
@@ -398,6 +488,10 @@ export function studentModal(S) {
   const pairs = s && s.kind === 'child' ? `<div class="f full"><b>${t('stu.parents')}</b>
       <div class="picklist">${parents.map(p => `<label><input type="checkbox" data-change="pair" data-pid="${esc(p.id)}" data-sid="${esc(s.id)}" ${p.kids.includes(s.id) ? 'checked' : ''}>${esc(p.name)} <span class="muted small">${esc(p.email)}</span></label>`).join('') || `<span class="muted small">${t('par.none')}</span>`}</div>
       <p class="small muted">${t('stu.parentsHelp')}</p></div>` : '';
+  const kidBox = s && s.kind === 'child' ? `<div class="f full kid-box"><b>${t('kid.title')}</b>
+      <p class="small muted">${t(s.hasCode ? 'kid.on' : 'kid.off')}</p>
+      <div class="btns"><button class="btn sm" type="button" data-act="kidcode-make" data-id="${esc(s.id)}">${t(s.hasCode ? 'kid.reset' : 'kid.make')}</button>${s.hasCode ? `<button class="btn sm" type="button" data-act="kidcode-off" data-id="${esc(s.id)}">${t('kid.turnOff')}</button>` : ''}</div>
+      <p class="small muted">${t('kid.hint')}</p></div>` : '';
   const rows = S.modal.books || (s ? s.books : []) || [];
   const books = `<div class="f full books-ed"><b>${t('stu.books')}</b><p class="small muted">${t('stu.booksHelp')}</p>
       ${rows.map((b, i) => `<div class="bk-row"><select name="bk${i}k" data-change="book-kind" aria-label="${esc(tx('bk.kind'))}"><option value="book" ${b.k === 'single' ? '' : 'selected'}>📘 ${t('bk.book')}</option><option value="single" ${b.k === 'single' ? 'selected' : ''}>🎵 ${t('bk.single')}</option></select>
@@ -428,7 +522,7 @@ export function studentModal(S) {
       <p class="small muted">${t('stu.tuitionHelp')}</p>
       <div class="btns"><button class="btn primary" type="submit">${t('common.save')}</button>
         ${s ? `<button class="btn" type="button" data-act="archive" data-id="${esc(s.id)}" data-to="${s.active ? 'false' : 'true'}">${t(s.active ? 'stu.archive' : 'stu.restore')}</button>` : ''}</div>
-    </form>${pairs}`;
+    </form>${pairs}${kidBox}`;
 }
 
 export function parentModal(S) {
@@ -608,6 +702,15 @@ function adminPoints(S) {
 
 export const VIEWS = {
   overview: overviewView, students: studentsView, record: recordView, notices: noticesView, messages: messagesView, points: pointsView,
-  home: homeView, learning: learningView, lessons: lessonsView, homework: homeworkView
+  home: homeView, learning: learningView, lessons: lessonsView, homework: homeworkView, resources: resourcesView
 };
-export const MODALS = { student: studentModal, parent: parentModal, confirm: confirmModal, remind: remindModal, avatar: avatarModal };
+/** 刚生成的登录码：只在这里显示一次。 */
+export function kidcodeModal(S) {
+  const m = S.modal;
+  return `<div class="card-h"><h2>${t('kid.codeTitle', { name: m.name })}</h2><button class="btn sm" data-act="close">${t('common.close')}</button></div>
+    <div class="kid-code" role="status"><div class="small muted">${t('kid.name')}</div><div class="kid-v">${esc(m.name)}</div>
+      <div class="small muted">${t('kid.code')}</div><div class="kid-v num" id="kid-code-show">${esc(m.code.slice(0, 4))} ${esc(m.code.slice(4))}</div></div>
+    <p class="small">${t('kid.once')}</p>
+    <div class="btns"><button class="btn primary" data-act="kid-copy">${t('kid.copy')}</button><button class="btn" data-act="close">${t('kid.done')}</button></div>`;
+}
+export const MODALS = { resview: resviewModal, resedit: reseditModal, kidcode: kidcodeModal, student: studentModal, parent: parentModal, confirm: confirmModal, remind: remindModal, avatar: avatarModal };

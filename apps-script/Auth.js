@@ -93,6 +93,32 @@ function authVerify_(ctx, p) {
   return { ticket: ticket, accounts: accts.map(accountInfo_) };
 }
 
+
+/**
+ * 孩子没有邮箱：用“名字 + 老师发的 8 位登录码”登录。
+ * 为什么不用“名字 + 生日”：生日是公开信息，同学、亲戚都知道，等于没有密码。
+ * - 登录码只存哈希；老师只在生成的那一刻能看到明文，忘了就重新生成（旧码立刻失效，已登录的设备也退出）。
+ * - 同一个孩子连续输错 5 次，锁 15 分钟；8 位数字一天最多能试 480 次，猜中的机会可以忽略。
+ * - 名字不存在和密码错返回同样的错误，也等一会儿再回，不暴露“有没有这个孩子”。
+ */
+function authKid_(ctx, p) {
+  var name = normName_(p.name), code = String(p.code == null ? '' : p.code).replace(/\s/g, '');
+  if (!name || name.length > LIMITS.name || !/^\d{8}$/.test(code)) fail_('invalid_code');
+  var now = now_();
+  pruneAuth_(now);
+  var kid = dbAll_('Students').filter(function (s) { return s.active && s.kind === 'child' && s.codeHash && normName_(s.name) === name; })[0];
+  if (!kid) { Utilities.sleep(600 + Math.floor(Math.random() * 500)); fail_('invalid_code'); }
+  if (Number(kid.codeLock || 0) > now) fail_('rate_limited');
+  if (kid.codeHash !== hashKidCode_(kid.id, code)) {
+    var fails = Number(kid.codeFails || 0) + 1;
+    if (fails >= KID_MAX_FAILS) dbUpdate_('Students', kid, { codeFails: 0, codeLock: now + KID_LOCK_MS });
+    else dbUpdate_('Students', kid, { codeFails: fails });
+    fail_('invalid_code');
+  }
+  if (Number(kid.codeFails || 0)) dbUpdate_('Students', kid, { codeFails: 0 });
+  return issueSession_('', { role: 'student', id: kid.id }, bool_(p.remember), { cv: Number(kid.codeVer || 0) });
+}
+
 /** 第三步（只有多个身份时）：选一个身份。临时凭证用一次作废。 */
 function authChoose_(ctx, p) {
   if (typeof p.ticket !== 'string' || p.ticket.length !== 64) fail_('unauthorized');
@@ -105,7 +131,7 @@ function authChoose_(ctx, p) {
   return issueSession_(t.email, pick, !!(t.data && t.data.remember));
 }
 
-function issueSession_(email, acct, remember) {
+function issueSession_(email, acct, remember, data) {
   var now = now_(), token = randomHex_(32);
   // 同一个身份最多留 10 个登录，超出的删最旧的
   var mine = dbAll_('Sessions').filter(function (s) { return s.kind === 'session' && s.email === email && s.role === acct.role && s.subject === acct.id; })
@@ -119,7 +145,7 @@ function issueSession_(email, acct, remember) {
   var expires = now + (remember ? SESSION_REMEMBER_MS : SESSION_SHORT_MS);
   dbInsert_('Sessions', {
     hash: hashToken_(token), kind: 'session', email: email, role: acct.role, subject: acct.id,
-    created: iso_(now), expires: iso_(expires), data: null
+    created: iso_(now), expires: iso_(expires), data: data || null
   });
   return { token: token, role: acct.role, id: acct.id, expiresAt: iso_(expires) };
 }
@@ -130,7 +156,13 @@ function ctxFromToken_(token) {
   var h = hashToken_(token);
   var s = dbAll_('Sessions').filter(function (r) { return r.hash === h && r.kind === 'session'; })[0];
   if (!s || ms_(s.expires) < now_()) fail_('unauthorized');
-  var ok = accountsForEmail_(s.email).some(function (a) { return a.role === s.role && a.id === s.subject; });
+  var ok;
+  if (s.email === '' && s.role === 'student') { // 孩子用登录码登录的：学生还在、没归档、登录码没被重置或关闭
+    var kid = findStudent_(s.subject);
+    ok = !!(kid && kid.active && kid.kind === 'child' && kid.codeHash && s.data && Number(s.data.cv) === Number(kid.codeVer || 0));
+  } else {
+    ok = accountsForEmail_(s.email).some(function (a) { return a.role === s.role && a.id === s.subject; });
+  }
   if (!ok) fail_('unauthorized');
   return { email: s.email, role: s.role, id: s.subject, session: s };
 }

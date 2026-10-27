@@ -28,6 +28,13 @@ function randomCode_() {
   var n = parseInt(Utilities.getUuid().replace(/-/g, '').slice(0, 12), 16) % 1000000;
   return ('000000' + n).slice(-6);
 }
+/** 8 位孩子登录码：取 UUID 的 16 位十六进制（全是随机位），模 1 亿。 */
+function randomKidCode_() {
+  var n = parseInt(Utilities.getUuid().replace(/-/g, '').slice(0, 13), 16) % 100000000;
+  return ('00000000' + n).slice(-8);
+}
+/** 名字比较：去掉首尾空格、多个空格并成一个、不分大小写。 */
+function normName_(v) { return String(v == null ? '' : v).trim().replace(/\s+/g, ' ').toLowerCase(); }
 function newId_(prefix) { return prefix + randomHex_(5); }
 
 function sha256_(str) {
@@ -41,6 +48,7 @@ function pepper_() {
   return p;
 }
 function hashCode_(email, code) { return sha256_(pepper_() + '|code|' + email + '|' + code); }
+function hashKidCode_(sid, code) { return sha256_(pepper_() + '|kid|' + sid + '|' + code); }
 function hashToken_(token) { return sha256_(pepper_() + '|token|' + token); }
 
 /* ---------- 输入清洗 ---------- */

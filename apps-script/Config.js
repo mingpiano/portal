@@ -7,10 +7,12 @@
  */
 
 var API_VERSION = 1;
-var SCHEMA_VERSION = 2;
+var SCHEMA_VERSION = 4;
 
 /* ---------- 登录相关限制 ---------- */
 var CODE_TTL_MS = 10 * 60 * 1000;          // 验证码 10 分钟有效
+var KID_MAX_FAILS = 5;                     // 孩子登录码连续输错 5 次，锁 15 分钟
+var KID_LOCK_MS = 15 * 60 * 1000;
 var CODE_MAX_ATTEMPTS = 5;                 // 一个验证码最多试 5 次
 var CODE_PER_EMAIL_HOUR = 3;               // 同一邮箱每小时最多请求 3 次
 var CODE_PER_EMAIL_DAY = 8;                // 同一邮箱每天最多 8 次
@@ -38,12 +40,14 @@ var SHEETS_ = {
   Config:   ['key', 'value'],
   Admins:   ['email', 'name', 'avatar:j', 'active:b'],
   Students: ['id', 'name', 'email', 'kind', 'birth:d', 'start:d', 'adj:i', 'lang', 'level', 'grp', 'dur:i',
-             'paid:i', 'carry:i', 'claimed:b', 'showPoints:b', 'avatar:j', 'books:j', 'active:b', 'created', 'tz'],
+             'paid:i', 'carry:i', 'claimed:b', 'showPoints:b', 'avatar:j', 'books:j', 'active:b', 'created', 'tz',
+             'codeHash', 'codeVer:i', 'codeFails:i', 'codeLock:i'],
   Parents:  ['id', 'name', 'email', 'lang', 'avatar:j', 'active:b', 'created'],
   Pairs:    ['parentId', 'studentId'],
   Lessons:  ['id', 'sid', 'date', 'dur:i', 'status', 'confirmedAt', 'signedAt', 'signedBy', 'loggedAt', 'notes:j', 'hwDone:j'],
   Notices:  ['id', 'ts', 'scope', 'sid', 'aud', 'title', 'body', 'readBy:j'],
   Messages: ['id', 'sid', 'from', 'pid', 'ts', 'text', 'readBy:j'],
+  Resources: ['id', 'title', 'kind', 'name', 'mime', 'size:i', 'parts:i', 'chunks:j', 'url', 'note', 'ts', 'all:b', 'sids:j', 'status', 'seenBy:j'],
   Sessions: ['hash', 'kind', 'email', 'role', 'subject', 'created', 'expires', 'data:j'],
   Codes:    ['id', 'email', 'known:b', 'codeHash', 'created', 'expires', 'attempts:i', 'used:b', 'sent:b'],
   MailLog:  ['ts', 'to', 'subject', 'kind', 'status']

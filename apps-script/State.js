@@ -56,7 +56,7 @@ function buildState_(ctx) {
       tz: studentTz_(s), next: nextLesson_(ls, now)
     };
     if (admin) {
-      out.paid = s.paid; out.carry = s.carry;
+      out.paid = s.paid; out.carry = s.carry; out.hasCode = !!s.codeHash;
       out.parentIds = kidParents.map(function (p) { return p.parentId; });
     }
     studentsOut.push(out);
@@ -117,7 +117,7 @@ function buildState_(ctx) {
     studio: { zh: cfg.studio_name_zh, en: cfg.studio_name_en },
     now: iso_(now), rules: rules, me: me,
     students: studentsOut, parents: parentsOut, lessons: lessonsOut, points: points,
-    notices: notices, messages: messages
+    notices: notices, messages: messages, resources: resourcesOut_(ctx, ids)
   };
   // 老师所在时区只给老师：学生和家长只看到自己所在时区的时间
   if (admin) out.teacherTz = teacherTz_();

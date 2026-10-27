@@ -146,3 +146,9 @@ const NOTE_SYM = { q: '♩', 'q.': '♩.', e: '♪', 'e.': '♪.', s: '♬' };
 export const noteSym = (n, name) => NOTE_SYM[n] || name;
 /** 把 {n, b} 写成 “♩ = 80”；没有速度返回空字符串。name(n) 给出音符的文字名称。 */
 export function tempoText(tp, name) { return tp && tp.b ? `${noteSym(tp.n, name(tp.n))} = ${tp.b}` : ''; }
+
+/** 文件大小：1.2 MB / 340 KB。 */
+export function fmtSize(n) {
+  n = Number(n) || 0;
+  return n >= 1048576 ? (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+}

@@ -100,6 +100,7 @@ function hStudentSave_(ctx, p) {
   if (r.id) {
     var row = findStudent_(String(r.id));
     if (!row) fail_('not_found');
+    if (row.codeHash && normName_(name) !== normName_(row.name) && all.some(function (x) { return x.id !== row.id && x.active && x.kind === 'child' && x.codeHash && normName_(x.name) === normName_(name); })) fail_('name_taken');
     if (books !== undefined) fields.books = books;
     dbUpdate_('Students', row, fields);
     return { id: row.id };
@@ -155,6 +156,27 @@ function hPairSet_(ctx, p) {
   } else {
     dbDelete_('Pairs', function (x) { return x.parentId === parent.id && x.studentId === s.id; });
   }
+  return {};
+}
+
+/** 生成（或重置）孩子的登录码。明文只在这次返回里出现一次，表里存的是哈希。 */
+function hKidCodeSet_(ctx, p) {
+  var s = findStudent_(String(p.sid || ''));
+  if (!s || !s.active) fail_('not_found');
+  if (s.kind !== 'child') fail_('not_child');
+  var n = normName_(s.name);
+  // 用名字登录，所以同名的孩子不能都开登录码，否则分不清谁是谁
+  if (dbAll_('Students').some(function (x) { return x.id !== s.id && x.active && x.kind === 'child' && x.codeHash && normName_(x.name) === n; })) fail_('name_taken');
+  var code = randomKidCode_();
+  dbUpdate_('Students', s, { codeHash: hashKidCode_(s.id, code), codeVer: Number(s.codeVer || 0) + 1, codeFails: 0, codeLock: 0 });
+  return { code: code, name: s.name };
+}
+
+/** 关闭孩子的登录码：旧码作废，已经用码登录的设备也立刻退出。 */
+function hKidCodeClear_(ctx, p) {
+  var s = findStudent_(String(p.sid || ''));
+  if (!s) fail_('not_found');
+  dbUpdate_('Students', s, { codeHash: '', codeVer: Number(s.codeVer || 0) + 1, codeFails: 0, codeLock: 0 });
   return {};
 }
 

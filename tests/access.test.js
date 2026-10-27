@@ -7,7 +7,7 @@ const { assert, OWNER, al, DAY, HOUR, fresh, WHO, ok, err, state, lessonParams }
  * 这样不会有哪个操作漏了权限检查。
  */
 const GATES = {
-  'auth.request': null, 'auth.verify': null, 'auth.choose': null,           // 不需要登录
+  'auth.request': null, 'auth.verify': null, 'auth.choose': null, 'auth.kid': null,         // 不需要登录
   'auth.logout': ['admin', 'parent', 'student'],
   'bootstrap': ['admin', 'parent', 'student'],
   'profile.save': ['admin', 'parent', 'student'],
@@ -18,7 +18,9 @@ const GATES = {
   'lessons.sign': ['parent', 'student'],
   'tuition.claim': ['parent', 'student'],
   'students.save': ['admin'], 'students.archive': ['admin'], 'parents.save': ['admin'], 'parents.archive': ['admin'],
-  'pairs.set': ['admin'], 'books.save': ['admin'], 'lessons.log': ['admin'], 'lessons.delete': ['admin'],
+  'res.begin': ['admin'], 'res.chunk': ['admin'], 'res.finish': ['admin'], 'res.link': ['admin'], 'res.update': ['admin'], 'res.delete': ['admin'],
+  'res.get': ['admin', 'parent', 'student'], 'res.seen': ['parent', 'student'],
+  'kidcode.set': ['admin'], 'kidcode.clear': ['admin'], 'pairs.set': ['admin'], 'books.save': ['admin'], 'lessons.log': ['admin'], 'lessons.delete': ['admin'],
   'tuition.paid': ['admin'], 'tuition.remind': ['admin'], 'rules.save': ['admin'], 'notices.send': ['admin']
 };
 const ROLE_WHO = { admin: 'admin', parent: 'li', student: 'emma' };

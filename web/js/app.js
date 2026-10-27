@@ -17,8 +17,8 @@ const S = {
   screen: 'boot',              // boot | offline | login | app
   token: null, data: null, tab: null, kid: null, msgSel: null, recSid: null,
   showArchived: false, modal: null, avDraft: null, busy: false, lastSync: 0,
-  recN: 1, recHw: {}, preview: null, adminData: null, adminLang: null, crop: null,
-  fresh: { n: new Set(), m: new Set() }, readTried: new Set(),
+  upload: null, upName: '', upSize: 0, resKind: 'file', dl: null, viewer: null, recN: 1, recHw: {}, preview: null, adminData: null, adminLang: null, crop: null,
+  fresh: { n: new Set(), m: new Set(), r: new Set() }, readTried: new Set(),
   login: { step: 'email', email: '', ticket: null, accounts: [], err: '', busy: false, remember: true, cooldown: 0 }
 };
 window.__S = S; // 仅供浏览器测试读取
@@ -35,7 +35,7 @@ function formKey(el) {
 function snapshot(skipBooks) {
   const snap = { vals: {}, focus: null };
   document.querySelectorAll('#app input, #app textarea, #app select, #modal-root input, #modal-root textarea, #modal-root select').forEach(el => {
-    const k = formKey(el); if (!k || el.type === 'hidden') return;
+    const k = formKey(el); if (!k || el.type === 'hidden' || el.type === 'file') return;
     if (skipBooks && /\/bk\d+[nfks]$|^#bk\d+-[nf]$/.test(k)) return; // 教材行增删后，序号变了，用刚整理好的数据，不要用旧快照
     snap.vals[k] = el.type === 'checkbox' ? { c: el.checked } : { v: el.value };
   });
@@ -46,7 +46,7 @@ function snapshot(skipBooks) {
 function restore(snap) {
   if (!snap) return;
   document.querySelectorAll('#app input, #app textarea, #app select, #modal-root input, #modal-root textarea, #modal-root select').forEach(el => {
-    const k = formKey(el); const v = k && snap.vals[k]; if (!v || el.type === 'hidden') return;
+    const k = formKey(el); const v = k && snap.vals[k]; if (!v || el.type === 'hidden' || el.type === 'file') return;
     if (el.type === 'checkbox') el.checked = v.c; else if (el.value !== v.v) el.value = v.v;
   });
   if (snap.focus) {
@@ -60,6 +60,7 @@ function markFresh() {
   const d = S.data;
   if (S.tab === 'notices' && d.me.role !== 'admin') d.notices.filter(n => n.unread).forEach(n => S.fresh.n.add(n.id));
   if (S.tab === 'messages') { const sid = V.msgSelFor(S); d.messages.filter(m => m.sid === sid && m.unread).forEach(m => S.fresh.m.add(m.id)); }
+  if (S.tab === 'resources' && d.me.role !== 'admin') (d.resources || []).filter(r => r.isNew).forEach(r => S.fresh.r.add(r.id));
 }
 
 function offlineView() {
@@ -91,7 +92,7 @@ export function render({ keep = true, skipBooks = false } = {}) {
 }
 
 function focusFirst(root) { const el = $(root + ' input:not([type=hidden]), ' + root + ' textarea, ' + root + ' select'); if (el) el.focus({ preventScroll: true }); }
-function go(patch, { scroll = false } = {}) { Object.assign(S, patch); S.fresh = { n: new Set(), m: new Set() }; render({ keep: false }); if (scroll) window.scrollTo(0, 0); }
+function go(patch, { scroll = false } = {}) { Object.assign(S, patch); S.fresh = { n: new Set(), m: new Set(), r: new Set() }; render({ keep: false }); if (scroll) window.scrollTo(0, 0); }
 
 let toastTimer;
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3200); }
@@ -112,7 +113,7 @@ async function run(action, params, opt = {}) {
     if (r.error === 'unauthorized') { sessionEnded('login.expired'); return r; }
     if (!opt.quiet) toast(errText(r.error));
     if (STALE_CODES.includes(r.error) && !opt.quiet) { await refresh(true); return r; }
-    render({ keep: !opt.fresh });
+    render(); // 出错时保留已填的内容，让人改一下再提交
     return r;
   }
   if (r.data && r.data.state) setData(r.data.state);
@@ -133,6 +134,9 @@ function autoRead() {
   if (S.tab === 'notices' && d.me.role !== 'admin') {
     const ids = d.notices.filter(n => n.unread && !S.readTried.has('n' + n.id)).map(n => n.id);
     if (ids.length) { ids.forEach(i => S.readTried.add('n' + i)); run('notices.read', { ids }, { quiet: true, silent: true }); }
+  } else if (S.tab === 'resources' && d.me.role !== 'admin') {
+    const ids = (d.resources || []).filter(r => r.isNew && !S.readTried.has('r' + r.id)).map(r => r.id);
+    if (ids.length) { ids.forEach(i => S.readTried.add('r' + i)); run('res.seen', { ids }, { quiet: true, silent: true }); }
   } else if (S.tab === 'messages') {
     const sid = V.msgSelFor(S);
     const ids = d.messages.filter(m => m.sid === sid && m.unread && !S.readTried.has('m' + m.id)).map(m => m.id);
@@ -142,8 +146,9 @@ function autoRead() {
 
 /* ---------- 登录 / 退出 ---------- */
 function sessionEnded(msgKey) {
+  closeViewer(); upFile = null;
   store.set(KEY.token, null); store.set(KEY.token, null, true);
-  Object.assign(S, { recN: 1, recHw: {}, preview: null, adminData: null, crop: null, token: null, data: null, modal: null, screen: 'login', tab: null, kid: null });
+  Object.assign(S, { upload: null, dl: null, upName: '', upSize: 0, recN: 1, recHw: {}, preview: null, adminData: null, crop: null, token: null, data: null, modal: null, screen: 'login', tab: null, kid: null });
   Object.assign(S.login, { step: 'email', err: msgKey || '', busy: false, ticket: null, accounts: [] });
   render({ keep: false });
 }
@@ -269,6 +274,65 @@ function readBookRows(root) {
 }
 const bookDraft = () => { const f = $('#modal-root form[data-form="student-save"]'); return f ? readBookRows(f).map((r, i) => ({ ...r, k: ((f.querySelector(`[name="bk${i}k"]`) || {}).value === 'single') ? 'single' : 'book' })) : []; };
 
+/* ---------- 资源库：上传、下载、在线播放 ---------- */
+const RES_MAX = 25 * 1024 * 1024, RES_PART = 1000000;
+const RES_EXT = ['pdf', 'mp3', 'm4a', 'wav', 'ogg', 'mp4', 'webm'];
+let upFile = null, viewerUrl = null;
+/** 直接调后台（不经过 run()：上传和下载要很多次请求，不能每次都重画整个页面）。 */
+async function callAuth(action, params) {
+  const r = await api.call(action, params, S.token);
+  if (!r.ok && r.error === 'unauthorized') sessionEnded('login.expired');
+  return r;
+}
+const readB64 = blob => new Promise((resolve, reject) => { const fr = new FileReader(); fr.onerror = () => reject(fr.error); fr.onload = () => resolve(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
+function setProg(a, b) {
+  const p = $('#res-prog'), tx_ = $('#res-prog-text');
+  if (p) p.value = a; if (tx_) tx_.textContent = tx('res.uploading', { a, b });
+}
+function shareFrom(fd) { const all = !!fd.get('all'); return { all, sids: all ? [] : fd.getAll('to') }; }
+async function uploadFile(fd) {
+  const file = upFile;
+  if (!file) return toast(tx('res.err.nofile'));
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (!RES_EXT.includes(ext) || file.name.indexOf('.') <= 0) return toast(tx('err.bad_file_type'));
+  if (file.size > RES_MAX) return toast(tx('res.err.big'));
+  if (!file.size) return toast(tx('res.err.empty'));
+  const share = shareFrom(fd);
+  if (!share.all && !share.sids.length) return toast(tx('res.err.nobody'));
+  const total = Math.ceil(file.size / RES_PART);
+  S.upload = { done: 0, total }; render();
+  const fail = code => { S.upload = null; render(); toast(typeof code === 'string' && code !== 'network' ? errText(code) : tx('res.err.upload')); };
+  const b = await callAuth('res.begin', { name: file.name, size: file.size, title: String(fd.get('title') || '').trim(), note: String(fd.get('note') || ''), ...share });
+  if (!b.ok) return fail(b.error);
+  for (let i = 0; i < b.data.parts; i++) {
+    const data = await readB64(file.slice(i * RES_PART, (i + 1) * RES_PART));
+    let r;
+    for (let attempt = 0; attempt < 3; attempt++) { r = await callAuth('res.chunk', { id: b.data.id, i, data }); if (r.ok || r.error !== 'network') break; }
+    if (!r.ok) return fail(r.error);
+    S.upload.done = i + 1; setProg(i + 1, total);
+  }
+  const f = await callAuth('res.finish', { id: b.data.id });
+  if (!f.ok) return fail(f.error);
+  setData(f.data.state); S.upload = null; upFile = null; S.upName = ''; S.upSize = 0;
+  render({ keep: false }); toast(tx('res.uploaded'));
+}
+/** 取回整个文件（一段一段取），拼成 Blob。进度显示在按钮上。 */
+async function fetchResource(r) {
+  S.dl = { id: r.id, done: 0, total: r.parts }; render();
+  const parts = [];
+  for (let i = 0; i < r.parts; i++) {
+    let res;
+    for (let attempt = 0; attempt < 3; attempt++) { res = await callAuth('res.get', { id: r.id, i }); if (res.ok || res.error !== 'network') break; }
+    if (!res.ok) { S.dl = null; render(); toast(errText(res.error)); return null; }
+    const bin = atob(res.data.data), u8 = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+    parts.push(u8); S.dl.done = i + 1; render();
+  }
+  S.dl = null; render();
+  return new Blob(parts, { type: r.mime });
+}
+function closeViewer() { if (viewerUrl) { URL.revokeObjectURL(viewerUrl); viewerUrl = null; } S.viewer = null; }
+
 const FORMS = {
   async 'login-email'(f, fd) {
     const email = norm(fd.get('email')); const A = S.login;
@@ -289,6 +353,28 @@ const FORMS = {
     if (!r.ok) { A.busy = false; A.err = 'err.' + (['invalid_code', 'rate_limited', 'network', 'busy'].includes(r.error) ? r.error : 'generic'); render({ keep: false }); return focusFirst('#app'); }
     if (r.data.ticket) { A.busy = false; A.step = 'pick'; A.ticket = r.data.ticket; A.accounts = r.data.accounts; return render({ keep: false }); }
     await finishLogin(r.data.token, A.remember);
+  },
+  async 'login-kid'(f, fd) {
+    const A = S.login; A.err = ''; A.remember = !!fd.get('remember'); A.kidName = String(fd.get('name') || '');
+    const code = String(fd.get('code') || '').replace(/\D/g, '');
+    if (!A.kidName.trim() || code.length !== 8) { A.err = 'err.invalid_code'; return render(); }
+    A.busy = true; render();
+    const r = await api.call('auth.kid', { name: A.kidName, code, remember: A.remember });
+    if (!r.ok) { A.busy = false; A.err = 'err.' + (['invalid_code', 'rate_limited', 'network', 'busy'].includes(r.error) ? r.error : 'generic'); render({ keep: false }); return focusFirst('#app'); }
+    await finishLogin(r.data.token, A.remember);
+  },
+  async 'res-add'(f, fd) {
+    if ((S.resKind || 'file') === 'file') return uploadFile(fd);
+    const share = shareFrom(fd);
+    if (!share.all && !share.sids.length) return toast(tx('res.err.nobody'));
+    const r = await run('res.link', { title: String(fd.get('title') || '').trim(), url: String(fd.get('url') || '').trim(), note: String(fd.get('note') || ''), ...share }, { fresh: true });
+    if (r.ok) toast(tx('res.uploaded'));
+  },
+  async 'res-update'(f, fd) {
+    const share = shareFrom(fd);
+    if (!share.all && !share.sids.length) return toast(tx('res.err.nobody'));
+    const r = await run('res.update', { id: f.dataset.id, title: String(fd.get('title') || '').trim(), note: String(fd.get('note') || ''), ...share }, { fresh: true });
+    if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); }
   },
   async 'rec-save'(f, fd) {
     const pieces = [];
@@ -350,7 +436,7 @@ const FORMS = {
     if (!text) return;
     const p = { text }; if (S.data.me.role !== 'student') p.sid = f.dataset.sid;
     const r = await run('messages.send', p, { fresh: true });
-    if (r.ok) { S.fresh = { n: new Set(), m: new Set() }; render({ keep: false }); toast(tx('msg.sentOk')); }
+    if (r.ok) { S.fresh = { n: new Set(), m: new Set(), r: new Set() }; render({ keep: false }); toast(tx('msg.sentOk')); }
   },
   async 'rules-save'(f, fd) {
     const rules = {};
@@ -371,8 +457,41 @@ const ACT = {
   'goto-msg'(d) { go({ tab: 'messages', msgSel: d.id }, { scroll: true }); },
   'sel-msg'(d) { go({ msgSel: d.id }); },
   'toggle-archived'() { S.showArchived = !S.showArchived; render(); },
-  close() { S.modal = null; S.avDraft = null; S.crop = null; render({ keep: false }); },
+  close() { closeViewer(); S.modal = null; S.avDraft = null; S.crop = null; render({ keep: false }); },
   'close-bg'(d, el, e) { if (e.target === el) ACT.close(); },
+  'res-kind'(d) { S.resKind = d.k === 'link' ? 'link' : 'file'; render(); },
+  'res-edit'(d) { S.modal = { type: 'resedit', id: d.id }; render({ keep: false }); focusFirst('#modal-root'); },
+  'res-del'(d) {
+    S.modal = { type: 'confirm', title: 'res.delTitle', body: 'res.delBody', vars: {}, yes: 'common.delete',
+      run: async () => { const r = await run('res.delete', { id: d.id }, { fresh: true }); S.modal = null; render({ keep: false }); if (r.ok) toast(tx('common.saved')); } };
+    render({ keep: false });
+  },
+  async 'res-dl'(d) {
+    if (S.dl) return;
+    const r = (S.data.resources || []).find(x => x.id === d.id); if (!r) return;
+    const blob = await fetchResource(r); if (!blob) return;
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = r.name || 'file'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  },
+  async 'res-print'(d) {
+    if (S.dl) return;
+    const r = (S.data.resources || []).find(x => x.id === d.id); if (!r) return;
+    const w = window.open('', '_blank'); // 必须在点击的那一刻打开，否则会被浏览器当成弹窗拦截
+    if (w) w.document.title = r.title;
+    const blob = await fetchResource(r); if (!blob) { if (w) w.close(); return; }
+    const url = URL.createObjectURL(blob);
+    if (w) { w.location.href = url; toast(tx('res.printHint')); } else { ACT['res-dl'](d); toast(tx('res.popupBlocked')); }
+    setTimeout(() => URL.revokeObjectURL(url), 10 * 60000);
+  },
+  async 'res-play'(d) {
+    if (S.dl) return;
+    const r = (S.data.resources || []).find(x => x.id === d.id); if (!r) return;
+    const blob = await fetchResource(r); if (!blob) return;
+    closeViewer(); viewerUrl = URL.createObjectURL(blob);
+    S.viewer = { id: r.id, url: viewerUrl }; S.modal = { type: 'resview' }; render({ keep: false });
+  },
+  'viewer-close'() { ACT.close(); },
   'book-add'() { const rows = bookDraft(); rows.push({ k: 'book', n: '', s: 'current' }); S.modal.books = rows; render({ skipBooks: true }); const ins = document.querySelectorAll('#modal-root .bk-row input[type=text]'); const last = [...ins].reverse().find(x => /^bk\d+n$/.test(x.name)); if (last) last.focus({ preventScroll: true }); },
   'book-del'(d) { const rows = bookDraft(); rows.splice(Number(d.i), 1); S.modal.books = rows; render({ skipBooks: true }); },
   'student-new'() { S.modal = { type: 'student', id: null, books: [] }; render({ keep: false }); focusFirst('#modal-root'); },
@@ -428,9 +547,31 @@ const ACT = {
     const r = await run('profile.save', { avatar: { t: 'img', v } }, { fresh: true });
     if (r.ok) { S.crop = null; S.modal = null; render({ keep: false }); }
   },
+  'kidcode-make'(d) {
+    const s = stuById(d.id);
+    const run_ = async () => {
+      const r = await run('kidcode.set', { sid: s.id }, { fresh: true });
+      if (r.ok) { S.modal = { type: 'kidcode', name: r.data.name, code: r.data.code, sid: s.id }; render({ keep: false }); } else { S.modal = null; render({ keep: false }); }
+    };
+    if (!s.hasCode) return run_();
+    S.modal = { type: 'confirm', title: 'kid.resetTitle', body: 'kid.resetBody', vars: { name: s.name }, yes: 'kid.reset', run: run_ };
+    render({ keep: false });
+  },
+  'kidcode-off'(d) {
+    const s = stuById(d.id);
+    S.modal = { type: 'confirm', title: 'kid.offTitle', body: 'kid.offBody', vars: { name: s.name }, yes: 'kid.turnOff',
+      run: async () => { const r = await run('kidcode.clear', { sid: s.id }, { fresh: true }); S.modal = null; render({ keep: false }); if (r.ok) toast(tx('common.saved')); } };
+    render({ keep: false });
+  },
+  async 'kid-copy'() {
+    const m = S.modal; if (!m || m.type !== 'kidcode') return;
+    const text = tx('kid.copyText', { name: m.name, code: m.code, url: location.origin + location.pathname });
+    try { await navigator.clipboard.writeText(text); toast(tx('kid.copied')); } catch (e) { toast(tx('kid.copyFail')); }
+  },
   async logout() { const tk = S.token; sessionEnded(''); api.call('auth.logout', {}, tk); },
   /* 登录 */
-  'login-back'() { Object.assign(S.login, { step: 'email', err: '', ticket: null, accounts: [] }); render({ keep: false }); focusFirst('#app'); },
+  'login-kid'() { Object.assign(S.login, { step: 'kid', err: '' }); render({ keep: false }); focusFirst('#app'); },
+  'login-back'() { Object.assign(S.login, { step: 'email', err: '', ticket: null, accounts: [], kidName: '' }); render({ keep: false }); focusFirst('#app'); },
   async 'login-resend'() {
     const A = S.login; if (A.busy || A.cooldown > 0) return;
     A.busy = true; A.err = ''; render();
@@ -461,6 +602,13 @@ const CHANGE = {
     if (!r.ok) render({ keep: false });
   },
   'book-kind'() { S.modal.books = bookDraft(); render({ skipBooks: true }); },
+  'res-file'(el) {
+    const f = el.files && el.files[0]; el.value = '';
+    if (!f) return;
+    upFile = f; S.upName = f.name; S.upSize = f.size;
+    const ti = $('#res-title'); if (ti && !ti.value.trim()) ti.value = f.name.replace(/\.[^.]+$/, '').slice(0, 200);
+    render();
+  },
   'rec-count'(el) { S.recN = Math.min(V.REC_MAX_PIECES, Math.max(1, Number(el.value) || 1)); render(); },
   'rec-hw'(el) { S.recHw = { ...S.recHw, [el.dataset.i]: el.value }; render(); },
   'rec-student'(el) {
@@ -486,11 +634,13 @@ document.addEventListener('change', e => { if (e.target.classList && e.target.cl
 document.addEventListener('input', e => {
   if (e.target.id === 'crop-zoom' && S.crop) { S.crop.zoom = Number(e.target.value); drawCrop(); return; }
   if (e.target.classList && e.target.classList.contains('rec-tf')) { updateHints(); return; }
+  if (e.target.id === 'kid-code') { const v = e.target.value.replace(/\D/g, '').slice(0, 8); if (v !== e.target.value) e.target.value = v; return; }
   if (e.target.id === 'login-code') {
     const v = e.target.value.replace(/\D/g, '').slice(0, 6); if (v !== e.target.value) e.target.value = v;
     if (v.length === 6 && !S.login.busy) e.target.form.requestSubmit(); // 输满 6 位自动提交
   }
 });
+document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.nodl')) e.preventDefault(); }); // 音频、视频只在线播放：不给“另存为”的右键菜单
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.modal) ACT.close(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(false); });
 
