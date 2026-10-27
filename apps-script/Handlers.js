@@ -100,6 +100,14 @@ function hStudentSave_(ctx, p) {
     showPoints: r.showPoints == null ? kind === 'child' : bool_(r.showPoints)
   };
   if (r.tz !== undefined && r.tz !== '') fields.tz = oneOf_(r.tz, TZ_LIST, 'tz');
+  // 学费方式：每 N 节一期（默认 10），或按月。没带这几项就不动原来的。
+  if (r.term !== undefined) fields.term = int_(r.term === '' ? 10 : r.term, 1, 50, 'term');
+  if (r.billing !== undefined) {
+    fields.billing = oneOf_(r.billing || 'lessons', ['lessons', 'month'], 'billing');
+    var bf = String(r.billFrom == null ? '' : r.billFrom).trim();
+    if (bf && !/^\d{4}-(0[1-9]|1[0-2])$/.test(bf)) fail_('bad_request', 'billFrom');
+    fields.billFrom = fields.billing === 'month' ? (bf || ymKey_(now_(), teacherTz_())) : '';
+  }
   // 教材和学生资料一起保存（和“保存”按钮同一次提交，不会再丢）；没带 books 就不动原有的
   var books = r.books === undefined ? undefined : cleanBooks_(r.books);
   var all = dbAll_('Students');
@@ -116,6 +124,7 @@ function hStudentSave_(ctx, p) {
   }
   var rec = fields;
   rec.tz = fields.tz || teacherTz_();
+  if (fields.term === undefined) rec.term = 10;
   rec.id = newId_('s'); rec.claimed = false; rec.avatar = null; rec.books = books || []; rec.active = true; rec.created = iso_(now_());
   dbInsert_('Students', rec);
   return { id: rec.id };
@@ -276,6 +285,8 @@ function hLessonLog_(ctx, p) {
   var id = newId_('l');
   dbInsert_('Lessons', { id: id, sid: s.id, date: iso_(x.dateMs), dur: x.dur, status: 'done', confirmedAt: '', signedAt: '',
     signedBy: '', loggedAt: iso_(now), notes: x.notes, hwDone: [] });
+  completeEventsOnLog_(s, id, x.dateMs); // 对应这节课的排课算“已上”
+  syncLessonEvent_(id, s, x.nextMs);   // 填了“下次上课”就同时排进日历
 
   if (getConfigMap_()['mail.lessonSign'] === 'true') {
     // 邮件里的时间按学生所在时区写，学生看到的和自己的钟一致
@@ -304,12 +315,14 @@ function hLessonEdit_(ctx, p) {
   var oldItems = hwList_(l.notes), newItems = hwList_(x.notes);
   var done = (l.hwDone || []).filter(function (i) { return oldItems[i] && newItems[i] && JSON.stringify(oldItems[i]) === JSON.stringify(newItems[i]); });
   dbUpdate_('Lessons', l, { date: iso_(x.dateMs), dur: x.dur, notes: x.notes, hwDone: done });
+  syncLessonEvent_(l.id, s, x.nextMs);
   return { id: l.id };
 }
 
 function hLessonDelete_(ctx, p) {
   var n = dbDelete_('Lessons', function (l) { return l.id === String(p.id || ''); });
   if (!n) fail_('not_found');
+  dbAll_('Events').forEach(function (e) { if (e.src === String(p.id || '')) dbUpdate_('Events', e, { src: '' }); }); // 排课留着，只是不再关联这节课
   return {};
 }
 
@@ -374,8 +387,7 @@ function hTuitionPaid_(ctx, p) {
 function hTuitionClaim_(ctx, p) {
   var s = accessStudent_(ctx, p.sid);
   if (ctx.role === 'student' && pairedParents_(s.id).length) fail_('forbidden'); // 有家长的孩子，由家长来点
-  var done = dbAll_('Lessons').filter(function (l) { return l.sid === s.id && l.status === 'done'; }).length;
-  if (!tuition_(s, done).due) fail_('not_due');
+  if (!tuitionFor_(s).due) fail_('not_due');
   dbUpdate_('Students', s, { claimed: true });
   return {};
 }
@@ -388,8 +400,8 @@ function hTuitionRemind_(ctx, p) {
   var to = parents.length ? parents.map(function (x) { return { email: x.email, lang: x.lang }; })
                           : (s.email ? [{ email: s.email, lang: s.lang }] : []);
   if (!to.length) fail_('no_recipient');
-  var sent = 0;
-  to.forEach(function (r) { if (sendMail_(r.email, mailTuition_(s.name, note, r.lang), 'tuition')) sent++; });
+  var sent = 0, tu = tuitionFor_(s);
+  to.forEach(function (r) { if (sendMail_(r.email, mailTuition_(s.name, note, r.lang, tu), 'tuition')) sent++; });
   if (!sent) fail_('mail_unavailable');
   return { sent: sent };
 }

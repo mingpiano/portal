@@ -5,7 +5,7 @@
  */
 import { t, tx, getLang } from './i18n.js';
 import { festGreeting } from './theme.js';
-import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, AVATAR_EMOJI, AVATAR_COLORS, TZ_LIST, tzName, tzAbbr, fmtClock, fmtDateZ, fmtWhenZ, daysUntil, nowFields, wallFields, fieldsToMs, TEMPO_NOTES, tempoText, noteSym, fmtSize } from './util.js';
+import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, AVATAR_EMOJI, AVATAR_COLORS, TZ_LIST, tzName, tzAbbr, fmtClock, fmtDateZ, fmtWhenZ, daysUntil, nowFields, wallFields, fieldsToMs, TEMPO_NOTES, tempoText, noteSym, fmtSize , googleCalUrl } from './util.js';
 
 const lg = () => getLang();
 const byId = (arr, id) => arr.find(x => x.id === id);
@@ -41,8 +41,8 @@ const stuTz = (S, sid) => (byId(S.data.students, sid) || {}).tz || S.data.teache
 const viewTz = (S, sid) => (role(S) === 'admin' ? S.data.teacherTz : stuTz(S, sid));
 export function curKid(S) { const ks = S.data.students; return ks.find(k => k.id === S.kid) || ks[0] || null; }
 export function tabsFor(S) {
-  if (role(S) === 'admin') return ['overview', 'students', 'record', 'resources', 'notices', 'messages', 'points'];
-  const base = ['home', 'learning', 'lessons', 'homework', 'resources', 'notices', 'messages'];
+  if (role(S) === 'admin') return ['overview', 'students', 'calendar', 'record', 'resources', 'notices', 'messages', 'points'];
+  const base = ['home', 'calendar', 'learning', 'lessons', 'homework', 'resources', 'notices', 'messages'];
   if (S.data.students.some(s => s.showPoints)) base.push('points');
   return base;
 }
@@ -114,7 +114,7 @@ export function shell(S, body) {
     ? `<div class="who">${nameLine}${avatar(me, 32)}<button class="btn sm primary" data-act="preview-exit">${t('prev.exit')}</button></div>`
     : `<div class="who">${nameLine}<button class="avbtn" data-act="av-open" aria-label="${esc(tx('av.change'))}">${avatar(me, 32)}</button>${langBtn()}<button class="btn sm" data-act="logout">${t('app.logout')}</button></div>`;
   const pv = S.preview ? `<div class="prev-note" role="note"><div class="wrap">${t('prev.banner', { name: me.name })} <button class="btn sm" data-act="preview-exit">${t('prev.exit')}</button></div></div>` : '';
-  const WANT_API = 4; // 要和 apps-script/Config.js 的 API_VERSION 一致
+  const WANT_API = 5; // 要和 apps-script/Config.js 的 API_VERSION 一致
   const old = me.role === 'admin' && !S.preview && (S.data.apiVer || 0) < WANT_API ? `<div class="ver-note" role="alert"><div class="wrap">${t('ver.old')}</div></div>` : '';
   return `${old}${pv}<header class="bar"><div class="wrap">
       <div class="brand">${logoImg(34)}${brandText('b')}</div>
@@ -189,16 +189,20 @@ function journey(s) {
 }
 
 function tuitionCard(S, s) {
-  const tu = s.tuition, isParent = role(S) === 'parent';
+  const tu = s.tuition, isParent = role(S) === 'parent', month = tu.mode === 'month';
   const payer = isParent || !s.hasParent;
   let msg;
   if (tu.due) {
-    if (payer) msg = `<div class="pay"><div class="grow"><b>${t('tu.dueTitle')}</b><div>${t('tu.dueBody', { name: s.name })}</div></div>${s.claimed ? pill('ok', t('tu.claimed')) : `<button class="btn sm" data-act="claim" data-id="${esc(s.id)}">${t('tu.iPaid')}</button>`}</div>`;
-    else msg = `<p class="small">${pill('plain', t('tu.allUsed'))}</p>`;
-  } else msg = `<p class="small">${tu.left === 1 ? t('tu.left1') : t('tu.left', { n: tu.left })}</p>`;
-  return `<section class="card"><div class="card-h"><h3>${t('tu.title')}</h3><span class="small muted num">${t('tu.used', { n: tu.used })}</span></div>
-    ${keyboard(tu.used, tx('tu.kb', { n: tu.used }))}${msg}</section>`;
+    if (payer) msg = `<div class="pay"><div class="grow"><b>${t('tu.dueTitle')}</b><div>${tuDueBody(s)}</div></div>${s.claimed ? pill('ok', t('tu.claimed')) : `<button class="btn sm" data-act="claim" data-id="${esc(s.id)}">${t('tu.iPaid')}</button>`}</div>`;
+    else msg = `<p class="small">${pill('plain', month ? t('tu.monthUnpaid') : t('tu.allUsed', { t: tu.n }))}</p>`;
+  } else msg = month ? `<p class="small">${t('tu.monthPaid')}</p>` : `<p class="small">${tu.left === 1 ? t('tu.left1') : t('tu.left', { n: tu.left })}</p>`;
+  if (month) return `<section class="card"><div class="card-h"><h3>${t('tu.titleMonth')}</h3><span class="small muted num">${t('tu.usedMonth', { n: tu.used })}</span></div>
+    <p class="small">${t('tu.monthLessons', { n: tu.used })}</p>${msg}</section>`;
+  return `<section class="card"><div class="card-h"><h3>${t('tu.title')}</h3><span class="small muted num">${t('tu.used', { n: tu.used, t: tu.n })}</span></div>
+    ${keyboard(tu.used, tx('tu.kb', { n: tu.used, t: tu.n }), tu.n)}${msg}</section>`;
 }
+/** 该交费提示里的正文：每 N 节一期 / 按月 两种说法。 */
+const tuDueBody = s => s.tuition.mode === 'month' ? t('tu.dueBodyMonth', { name: s.name, month: s.tuition.month }) : t('tu.dueBody', { name: s.name, t: s.tuition.n });
 
 function pointsPeek(S, s) {
   const p = S.data.points[s.id];
@@ -221,12 +225,17 @@ function nextWhen(s) {
   const rel = n <= 0 ? t('nx.today') : n === 1 ? t('nx.tomorrow') : t('nx.days', { n });
   return { rel, when: fmtWhenZ(s.next, s.tz, L, { weekday: true }), zone: tzAbbr(s.next, s.tz) };
 }
+/** 下次上课旁边的“加入日历”按钮（只有日历里有这一节时才有）。 */
+function nextAddBtns(S, s) {
+  const e = s.nextId && (S.data.events || []).find(x => x.id === s.nextId);
+  return e ? `<div class="btns"><a class="btn sm" href="${esc(googleCalUrl(evCalData(S, e)))}" target="_blank" rel="noopener noreferrer">${t('cal.google')}</a><button class="btn sm" data-act="ev-ics" data-id="${esc(e.id)}">${t('cal.ics')}</button><button class="btn sm link" data-act="tab" data-tab="calendar">${t('cal.open')}</button></div>` : '';
+}
 function nextCard(S, s) {
   if (!s.next) return `<section class="card"><div class="card-h"><h3>${t('nx.title')}</h3></div><p class="muted small">${t('nx.none')}</p></section>`;
   const w = nextWhen(s);
   return `<section class="card next"><div class="card-h"><h3>${t('nx.title')}</h3>${pill('wait', w.rel)}</div>
     <div class="next-when num">${esc(w.when)} <span class="small muted">${esc(w.zone)}</span></div>
-    <p class="small">${t('nx.remind')}</p>${hwOpenCount(S, s.id) ? `<div class="btns"><button class="btn sm" data-act="kid-go" data-id="${esc(s.id)}" data-tab="homework">${t('tab.homework')} <span class="badge">${hwOpenCount(S, s.id)}</span></button></div>` : ''}</section>`;
+    <p class="small">${t('nx.remind')}</p>${nextAddBtns(S, s)}${hwOpenCount(S, s.id) ? `<div class="btns"><button class="btn sm" data-act="kid-go" data-id="${esc(s.id)}" data-tab="homework">${t('tab.homework')} <span class="badge">${hwOpenCount(S, s.id)}</span></button></div>` : ''}</section>`;
 }
 
 /* ---------- 学生 / 家长：作业 ---------- */
@@ -347,8 +356,8 @@ export function homeView(S) {
         ${uns.length ? `<div class="callout">${t('par.toSign', { n: uns.length })} <button class="btn link small" data-act="kid-go" data-id="${esc(k.id)}" data-tab="lessons">${t('par.signNow')}</button></div>` : ''}
         ${tuitionPayBanner(k)}
         ${k.next ? `<div class="callout next-line">${t('nx.title')}: <b>${esc(nextWhen(k).when)}</b> <span class="small muted">${esc(nextWhen(k).zone)}</span> ${pill('wait', esc(nextWhen(k).rel))}<div class="small">${t('nx.remind')}${hwOpenCount(S, k.id) ? ` <button class="btn link small" data-act="kid-go" data-id="${esc(k.id)}" data-tab="homework">${t('tab.homework')} (${hwOpenCount(S, k.id)})</button>` : ''}</div></div>` : ''}
-        <div class="grid2"><div class="stack" style="gap:8px"><p class="small muted">${t('par.progress')}</p>${keyboard(k.tuition.used, tx('tu.kb', { n: k.tuition.used }))}
-          <p class="small num">${t('par.progressVal', { u: k.tuition.used, n: k.total })}</p></div>
+        <div class="grid2"><div class="stack" style="gap:8px"><p class="small muted">${t('par.progress')}</p>${k.tuition.mode === 'month' ? '' : keyboard(k.tuition.used, tx('tu.kb', { n: k.tuition.used, t: k.tuition.n }), k.tuition.n)}
+          <p class="small num">${k.tuition.mode === 'month' ? t('par.progressMonth', { u: k.tuition.used, n: k.total }) : t('par.progressVal', { u: k.tuition.used, t: k.tuition.n, n: k.total })}</p></div>
           <div class="stack" style="gap:8px"><p class="small muted">${t('par.learning')}</p>
             ${lr.current.slice(0, 4).map(e => `<div class="piece"><span class="work">${esc(e.title)}</span>${pill(e.st === 'new' ? 'wait' : 'plain', t('piece.' + e.st))}</div>`).join('') || '<span class="muted small">—</span>'}
             <p class="small muted">${t('par.finished', { n: lr.finished.length })}</p></div></div>
@@ -366,7 +375,7 @@ export function homeView(S) {
 }
 function tuitionPayBanner(k) {
   if (!k.tuition.due) return '';
-  return `<div class="pay"><div class="grow"><b>${t('tu.dueTitle')}</b><div>${t('tu.dueBody', { name: k.name })}</div></div>${k.claimed ? pill('ok', t('tu.claimed')) : `<button class="btn sm" data-act="claim" data-id="${esc(k.id)}">${t('tu.iPaid')}</button>`}</div>`;
+  return `<div class="pay"><div class="grow"><b>${t('tu.dueTitle')}</b><div>${tuDueBody(k)}</div></div>${k.claimed ? pill('ok', t('tu.claimed')) : `<button class="btn sm" data-act="claim" data-id="${esc(k.id)}">${t('tu.iPaid')}</button>`}</div>`;
 }
 
 /* ---------- 学生 / 家长：正在学习、课程记录、通知、留言、积分 ---------- */
@@ -381,7 +390,7 @@ export function learningView(S) {
   const piece = e => `<div class="prow"><div class="grow"><span class="work">${esc(e.title)}</span> <span class="muted small">${esc(e.source)}</span></div>
     ${e.st === 'done' ? `${pill('ok', t('piece.done'))}<span class="small muted">${t('lrn.finishedOn', { d: fmtD(e.last, L) })}</span>` : `${pill(e.st === 'new' ? 'wait' : 'plain', t('piece.' + e.st))}<span class="small muted">${t('lrn.since', { d: fmtD(e.first, L), n: e.n })}</span>`}</div>`;
   return `<div class="stack"><div class="page-h"><h1>${t('tab.learning')}</h1><span class="muted">${esc(s.name)}</span></div>
-    <div class="grid2"><section class="card"><h2>${t('lrn.books')}</h2><div class="chips" style="gap:8px">${bk.filter(b => b.s === 'current').map(bookChip).join('') || `<span class="muted small">${t('lrn.noBooks')}</span>`}</div>
+    <div class="grid2"><section class="card"><h2>${t('lrn.books')}</h2><div class="chips" style="gap:8px">${bk.filter(b => b.s === 'current').map(b => bookChip(b, false)).join('') || `<span class="muted small">${t('lrn.noBooks')}</span>`}</div>
       <h3>${t('lrn.oldBooks')}</h3><div class="chips" style="gap:8px">${bk.filter(b => b.s === 'done').map(b => bookChip(b, true)).join('') || '<span class="muted small">—</span>'}</div></section>
       <section class="card"><h3>${t('jr.title')}</h3>${journey(s)}</section></div>
     <section class="card"><div class="card-h"><h2>${t('lrn.current')}</h2><span class="small muted">${lr.current.length}</span></div><div class="plist">${lr.current.map(piece).join('') || '<p class="muted small">—</p>'}</div></section>
@@ -441,7 +450,7 @@ export function overviewView(S) {
   const unreadBy = {};
   d.messages.filter(m => m.unread).forEach(m => { unreadBy[m.sid] = (unreadBy[m.sid] || 0) + 1; });
   const rows = [];
-  due.forEach(s => rows.push(`<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted">${t('ov.dueRow')}</div></div>
+  due.forEach(s => rows.push(`<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted">${s.tuition.mode === 'month' ? t('ov.dueRowMonth', { month: s.tuition.month }) : t('ov.dueRow', { t: s.tuition.n })}</div></div>
     ${s.claimed ? pill('ok', t('ov.claimed')) : ''}<button class="btn sm" data-act="remind" data-id="${esc(s.id)}">${t('ov.remind')}</button><button class="btn sm primary" data-act="paid" data-id="${esc(s.id)}">${t('ov.paid')}</button></div>`));
   Object.keys(unreadBy).forEach(sid => {
     const s = byId(d.students, sid); if (!s) return;
@@ -451,17 +460,17 @@ export function overviewView(S) {
     const s = byId(d.students, l.sid);
     rows.push(`<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted">${t('ov.pendingSign', { n: l.n, d: fmtD(l.date, L) })}</div></div>${pill('wait', t('les.waiting'))}</div>`);
   });
-  const upcoming = active.filter(s => s.next).sort((a, b) => new Date(a.next) - new Date(b.next)).slice(0, 8);
-  const upRows = upcoming.map(s => {
-    const same = !s.tz || s.tz === d.teacherTz;
-    return `<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted num">${esc(fmtWhenZ(s.next, d.teacherTz, L, { weekday: true }))} ${esc(tzAbbr(s.next, d.teacherTz))}${same ? '' : ` · ${esc(tx('ov.theirTime', { when: fmtClock(s.next, s.tz, L), zone: tzAbbr(s.next, s.tz) }))}`}</div></div></div>`;
+  const upcoming = (d.events || []).filter(e => e.status === 'scheduled' && Date.parse(e.start) > Date.now() && (byId(d.students, e.sid) || {}).active).slice(0, 8);
+  const upRows = upcoming.map(e => {
+    const s = byId(d.students, e.sid), same = !s.tz || s.tz === d.teacherTz;
+    return `<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted num">${esc(fmtWhenZ(e.start, d.teacherTz, L, { weekday: true }))} ${esc(tzAbbr(e.start, d.teacherTz))}${same ? '' : ` · ${esc(tx('ov.theirTime', { when: fmtClock(e.start, s.tz, L), zone: tzAbbr(e.start, s.tz) }))}`}</div></div></div>`;
   }).join('');
   return `<div class="stack"><div class="page-h"><h1>${t('tab.overview')}</h1><span class="muted">${esc(fmtD(new Date(), L))}</span></div>${festBanner()}
     <div class="stats"><div class="stat"><b>${active.length}</b><span>${t('ov.students')}</span></div><div class="stat"><b>${month}</b><span>${t('ov.month')}</span></div>
       <div class="stat"><b>${pending.length}</b><span>${t('ov.pending')}</span></div><div class="stat ${due.length ? 'flag' : ''}"><b>${due.length}</b><span>${t('ov.due')}</span></div></div>
     <section class="card"><div class="card-h"><h2>${t('ov.todo')}</h2><button class="btn primary sm" data-act="tab" data-tab="record">${t('ov.logLesson')}</button></div>
       <div class="rows">${rows.join('') || `<p class="muted">${t('ov.allClear')}</p>`}</div></section>
-    <section class="card"><div class="card-h"><h2>${t('ov.upcoming')}</h2></div><div class="rows">${upRows || `<p class="muted small">${t('ov.upcomingNone')}</p>`}</div></section></div>`;
+    <section class="card"><div class="card-h"><h2>${t('ov.upcoming')}</h2><button class="btn sm" data-act="tab" data-tab="calendar">${t('ov.openCal')}</button></div><div class="rows">${upRows || `<p class="muted small">${t('ov.upcomingNone')}</p>`}</div></section></div>`;
 }
 
 /* ---------- 老师：学生与家长 ---------- */
@@ -482,7 +491,7 @@ export function studentsView(S) {
         <div class="small muted">${esc(s.level)}${s.email ? ` · ${esc(s.email)}` : ''}</div>
         <div class="small muted">${seenLine(s)}</div>
         <div class="small muted">${esc(tzName(s.tz, L))}${s.next ? ` · ${esc(tx('nx.row', { when: fmtWhenZ(s.next, d.teacherTz, L) }))}` : ''}</div></div>
-        <div class="small num">${t('stu.tuitionRow', { u: s.tuition.used, l: Math.max(0, s.tuition.left) })}${s.tuition.due ? ' ' + pill('bad', t('stu.due')) : ''}</div>
+        <div class="small num">${s.tuition.mode === 'month' ? t('stu.tuitionRowMonth', { u: s.tuition.used }) : t('stu.tuitionRow', { u: s.tuition.used, t: s.tuition.n, l: Math.max(0, s.tuition.left) })}${s.tuition.due ? ' ' + pill('bad', t('stu.due')) : ''}</div>
         ${s.active ? `<button class="btn sm" data-act="preview" data-id="${esc(s.id)}">${t('prev.btn')}</button>` : ''}
         <button class="btn sm" data-act="student-edit" data-id="${esc(s.id)}">${t('common.edit')}</button></div>`).join('') || `<p class="muted">${t('stu.none')}</p>`}</div></section>
     <div class="page-h"><h2>${t('par.title')}</h2><button class="btn sm" data-act="parent-new">${t('par.add')}</button></div>
@@ -494,6 +503,7 @@ const val = v => esc(v == null ? '' : v);
 export function studentModal(S) {
   const d = S.data, id = S.modal.id, s = id ? byId(d.students, id) : null;
   const v = s || { name: '', email: '', kind: 'child', lang: 'zh', tz: d.teacherTz, birth: '', start: '', level: '', grp: '', dur: 30, paid: 0, carry: 0, adj: 0, showPoints: true, books: [], active: true };
+  const bill = S.modal.billing || v.billing || 'lessons', thisMonth = wallFields(Date.now(), d.teacherTz).date.slice(0, 7);
   const sel = (name, cur, opts) => `<select name="${name}">${opts.map(([k, lab]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${lab}</option>`).join('')}</select>`;
   const parents = d.parents.filter(p => p.active);
   const pairs = s && s.kind === 'child' ? `<div class="f full"><b>${t('stu.parents')}</b>
@@ -524,8 +534,13 @@ export function studentModal(S) {
         <label class="f">${t('stu.start')}<input type="date" name="start" value="${val(v.start)}"></label>
         <label class="f full">${t('stu.level')}<input type="text" name="level" value="${val(v.level)}" maxlength="80"></label>
         <label class="f">${t('stu.dur')}<input type="number" name="dur" value="${val(v.dur)}" min="10" max="180" step="5"></label>
+        <label class="f">${t('stu.billing')}${sel('billing', bill, [['lessons', tx('stu.billLessons')], ['month', tx('stu.billMonth')]]).replace('<select ', '<select data-change="bill-mode" ')}</label>
+        ${bill === 'month'
+          ? `<label class="f">${t('stu.billFrom')}<input type="month" name="billFrom" value="${val(v.billFrom || thisMonth)}"></label>
+        <label class="f">${t('stu.paidMonths')}<input type="number" name="paid" value="${val(v.paid)}" min="0" max="500"></label>`
+          : `<label class="f">${t('stu.term')}<input type="number" name="term" value="${val(v.term || 10)}" min="1" max="50"></label>
         <label class="f">${t('stu.paid')}<input type="number" name="paid" value="${val(v.paid)}" min="0" max="500"></label>
-        <label class="f">${t('stu.carry')}<input type="number" name="carry" value="${val(v.carry)}" min="0" max="5000"></label>
+        <label class="f">${t('stu.carry')}<input type="number" name="carry" value="${val(v.carry)}" min="0" max="5000"></label>`}
         <label class="f">${t('stu.adj')}<input type="number" name="adj" value="${val(v.adj)}" min="-2000" max="2000"></label>
         <label class="check full"><input type="checkbox" name="showPoints" ${v.showPoints ? 'checked' : ''}>${t('stu.showPoints')}</label>
         <input type="hidden" name="grp" value="${val(v.grp)}">
@@ -729,9 +744,93 @@ function adminPoints(S) {
     <p class="small muted">${t('pts.switchHelp')}</p></section></div></div>`;
 }
 
+/* ---------- 日历 ---------- */
+const pad2 = n => String(n).padStart(2, '0');
+const evStu = (S, e) => byId(S.data.students, e.sid) || { name: '', tz: S.data.teacherTz, dur: 30 };
+/** 某节课的标题：“钢琴课 · Emma Li”。 */
+export const evTitle = (S, e) => `${tx('cal.lesson')} · ${evStu(S, e).name}`;
+export const evCalData = (S, e) => ({ id: e.id, start: e.start, dur: e.dur, title: evTitle(S, e), desc: [e.note, tx('app.name') + ' · ' + tx('app.sub')].filter(Boolean).join('\n'), cancelled: e.status === 'cancelled' });
+export const calTz = S => role(S) === 'admin' ? S.data.teacherTz : ((S.data.students[0] || {}).tz || S.data.teacherTz);
+const evDay = (S, e) => wallFields(Date.parse(e.start), viewTz(S, e.sid)).date;
+/** 一节课在“看的人”那边的时间：10:00 AM – 10:45 AM MDT；老师还能看到学生那边的时间。 */
+function evWhen(S, e, withTheirs) {
+  const L = lg(), tz = viewTz(S, e.sid), s = evStu(S, e), end = Date.parse(e.start) + e.dur * 60000;
+  let out = `${fmtClock(e.start, tz, L)} – ${fmtClock(end, tz, L)} ${tzAbbr(e.start, tz)}`;
+  if (withTheirs && s.tz && s.tz !== tz) out += ` · ${tx('ov.theirTime', { when: fmtClock(e.start, s.tz, L), zone: tzAbbr(e.start, s.tz) })}`;
+  return out;
+}
+function evRow(S, e, { showDate = false } = {}) {
+  const L = lg(), admin = role(S) === 'admin', s = evStu(S, e), cancelled = e.status === 'cancelled', done = e.status === 'done';
+  const tz = viewTz(S, e.sid);
+  const canAdd = !cancelled && !done;
+  return `<div class="evrow ${cancelled ? 'cancelled' : ''} ${done ? 'done' : ''}"><div class="ev-bar" aria-hidden="true"></div>
+    <div class="grow"><div class="ev-t num">${showDate ? esc(fmtDateZ(e.start, tz, L, { weekday: true })) + ' · ' : ''}${esc(evWhen(S, e, admin))}</div>
+      <div class="ev-n">${avatar(s, 22)} <b>${esc(s.name)}</b> <span class="muted small">· ${t('les.minutes', { n: e.dur })}</span>${cancelled ? ' ' + pill('bad', t('cal.cancelled')) : done ? ' ' + pill('ok', t('cal.done')) : ''}</div>
+      ${e.note ? `<div class="small muted ev-note">${esc(e.note)}</div>` : ''}</div>
+    <div class="ev-act">${canAdd ? `<a class="btn sm" href="${esc(googleCalUrl(evCalData(S, e)))}" target="_blank" rel="noopener noreferrer">${t('cal.google')}</a><button class="btn sm" data-act="ev-ics" data-id="${esc(e.id)}">${t('cal.ics')}</button>` : ''}
+      ${admin ? `<button class="btn sm" data-act="ev-edit" data-id="${esc(e.id)}">${t('common.edit')}</button>` : ''}</div></div>`;
+}
+export function calendarView(S) {
+  const d = S.data, L = lg(), admin = role(S) === 'admin';
+  const tz = calTz(S), today = wallFields(Date.now(), tz).date;
+  const ym = /^\d{4}-\d{2}$/.test(S.calMonth || '') ? S.calMonth : today.slice(0, 7);
+  const [Y, M] = ym.split('-').map(Number);
+  const lead = new Date(Date.UTC(Y, M - 1, 1)).getUTCDay(), days = new Date(Date.UTC(Y, M, 0)).getUTCDate();
+  const sel = S.calDay && S.calDay.startsWith(ym) ? S.calDay : (today.startsWith(ym) ? today : `${ym}-01`);
+  const by = {};
+  (d.events || []).forEach(e => { (by[evDay(S, e)] = by[evDay(S, e)] || []).push(e); });
+  const loc = L === 'zh' ? 'zh-CN' : 'en-US';
+  const monthName = new Intl.DateTimeFormat(loc, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(Y, M - 1, 1)));
+  const wd = Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(loc, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2023, 0, 1 + i))));
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<div class="cal-cell empty" aria-hidden="true"></div>');
+  for (let day = 1; day <= days; day++) {
+    const key = `${ym}-${pad2(day)}`, list = by[key] || [];
+    const chips = list.slice(0, 2).map(e => `<span class="cal-chip ${e.status}">${esc(fmtClock(e.start, viewTz(S, e.sid), L).replace(/:00(\s?[AP]M)/i, '$1'))} ${esc(evStu(S, e).name.split(' ')[0])}</span>`).join('');
+    cells.push(`<button class="cal-cell ${key === today ? 'today' : ''} ${key === sel ? 'sel' : ''} ${list.length ? 'has' : ''}" data-act="cal-day" data-day="${key}" aria-pressed="${key === sel}" aria-label="${esc(fmtYMD(key, L))}${list.length ? ' · ' + esc(tx('cal.nLessons', { n: list.length })) : ''}"><span class="cal-d">${day}</span>${chips}${list.length > 2 ? `<span class="cal-more">+${list.length - 2}</span>` : ''}</button>`);
+  }
+  const dayList = (by[sel] || []).slice().sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  const up = (d.events || []).filter(e => e.status === 'scheduled' && Date.parse(e.start) > Date.now()).slice().sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  return `<div class="stack"><div class="page-h"><h1>${t('tab.calendar')}</h1>${admin ? `<button class="btn primary sm" data-act="ev-new" data-day="${sel}">＋ ${t('cal.add')}</button>` : `<span class="muted small">${t('cal.sub')}</span>`}</div>
+    <section class="card calm"><div class="cal-nav"><button class="btn sm" data-act="cal-month" data-d="-1" aria-label="${esc(tx('cal.prev'))}">‹</button><h2>${esc(monthName)}</h2><button class="btn sm" data-act="cal-month" data-d="1" aria-label="${esc(tx('cal.next'))}">›</button><button class="btn sm link" data-act="cal-today">${t('cal.today')}</button></div>
+      <div class="cal-grid" role="group" aria-label="${esc(monthName)}">${wd.map(w => `<div class="cal-wd">${esc(w)}</div>`).join('')}${cells.join('')}</div>
+      ${admin ? '' : `<p class="small muted">${t('cal.tzNote', { zone: tzName(tz, L) })}</p>`}</section>
+    <section class="card"><div class="card-h"><h2>${esc(fmtYMD(sel, L))}</h2>${admin ? `<button class="btn sm" data-act="ev-new" data-day="${sel}">＋ ${t('cal.add')}</button>` : ''}</div>
+      <div class="evlist">${dayList.map(e => evRow(S, e)).join('') || `<p class="muted small">${t('cal.noneDay')}</p>`}</div></section>
+    <section class="card"><div class="card-h"><h2>${t('cal.upcoming')}</h2>${up.length ? `<button class="btn sm" data-act="ev-ics-all">${t('cal.icsAll')}</button>` : ''}</div>
+      <div class="evlist">${up.slice(0, 8).map(e => evRow(S, e, { showDate: true })).join('') || `<p class="muted small">${t('cal.noneUp')}</p>`}</div>
+      <p class="small muted">${t('cal.syncNote')}</p></section></div>`;
+}
+/** 老师：添加 / 修改一节排好的课。 */
+export function eventModal(S) {
+  const d = S.data, m = S.modal, e = m.id ? (d.events || []).find(x => x.id === m.id) : null;
+  const act = d.students.filter(s => s.active);
+  const sid = e ? e.sid : (m.sid && byId(act, m.sid) ? m.sid : (act[0] || {}).id);
+  const st = byId(d.students, sid) || { dur: 30 };
+  const base = nowFields(d.teacherTz);
+  const f = e ? wallFields(Date.parse(e.start), d.teacherTz) : { ...base, date: /^\d{4}-\d{2}-\d{2}$/.test(m.day || '') ? m.day : base.date };
+  const hintMs = fieldsToMs(f.date, f.h12, f.mi, f.ap, d.teacherTz);
+  const cancelled = e && e.status === 'cancelled';
+  return `<div class="card-h"><h2>${t(e ? 'cal.edit' : 'cal.add')}</h2><button class="btn sm" data-act="close">${t('common.close')}</button></div>
+    <form class="stack" data-form="ev-save" ${e ? `data-id="${esc(e.id)}"` : ''}><div class="form">
+      ${e ? `<div class="f"><span>${t('rec.student')}</span><b>${esc(st.name || '')}</b><input type="hidden" name="sid" value="${esc(sid)}"></div>`
+        : `<label class="f">${t('rec.student')}<select id="ev-student" name="sid" data-change="ev-student">${act.map(s => `<option value="${esc(s.id)}" ${s.id === sid ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>`}
+      <label class="f">${t('rec.dur')}<input type="number" id="ev-dur" name="dur" value="${esc(e ? e.dur : st.dur)}" min="10" max="180" step="5"></label>
+      <div class="f full"><span>${t('rec.time')} <span class="muted small">· ${esc(tzAbbr(Date.now(), d.teacherTz))} ${esc(tzName(d.teacherTz, lg()))}</span></span>
+        <div class="tp-row"><input type="date" id="ev-date" name="date" class="rec-tf" value="${esc(f.date)}" aria-label="${esc(tx('rec.date'))}">${timePick('e', f)}</div>
+        <p class="small hint" id="ev-hint">${esc(tzHint(S, sid, hintMs))}</p></div>
+      ${e ? '' : `<label class="f">${t('cal.repeat')}<input type="number" id="ev-rep" name="rep" value="1" min="1" max="26"><span class="small muted">${t('cal.repeatHelp')}</span></label>`}
+      <label class="f full">${t('cal.note')}<input type="text" id="ev-note" name="note" value="${val(e ? e.note : '')}" maxlength="200" placeholder="${esc(tx('cal.notePh'))}"></label>
+      ${e ? `<label class="check full"><input type="checkbox" name="notify" checked> ${t('cal.notify')}</label>` : ''}
+    </div>
+    <div class="btns"><button class="btn primary" type="submit" ${S.busy ? 'disabled' : ''}>${t('common.save')}</button>
+      ${e ? `<button class="btn" type="button" data-act="ev-status" data-id="${esc(e.id)}" data-to="${cancelled ? 'scheduled' : 'cancelled'}">${t(cancelled ? 'cal.restore' : 'cal.cancel')}</button><button class="btn" type="button" data-act="ev-del" data-id="${esc(e.id)}">${t('common.delete')}</button>` : ''}</div>
+    ${e && e.src ? `<p class="small muted">${t('cal.linked')}</p>` : ''}</form>`;
+}
+
 export const VIEWS = {
   overview: overviewView, students: studentsView, record: recordView, notices: noticesView, messages: messagesView, points: pointsView,
-  home: homeView, learning: learningView, lessons: lessonsView, homework: homeworkView, resources: resourcesView
+  home: homeView, learning: learningView, lessons: lessonsView, homework: homeworkView, resources: resourcesView, calendar: calendarView
 };
 /** 刚生成的登录码：只在这里显示一次。 */
 export function kidcodeModal(S) {
@@ -742,4 +841,4 @@ export function kidcodeModal(S) {
     <p class="small">${t('kid.once')}</p>
     <div class="btns"><button class="btn primary" data-act="kid-copy">${t('kid.copy')}</button><button class="btn" data-act="close">${t('kid.done')}</button></div>`;
 }
-export const MODALS = { resview: resviewModal, resedit: reseditModal, kidcode: kidcodeModal, student: studentModal, parent: parentModal, confirm: confirmModal, remind: remindModal, avatar: avatarModal };
+export const MODALS = { event: eventModal, resview: resviewModal, resedit: reseditModal, kidcode: kidcodeModal, student: studentModal, parent: parentModal, confirm: confirmModal, remind: remindModal, avatar: avatarModal };

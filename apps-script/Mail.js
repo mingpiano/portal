@@ -81,13 +81,30 @@ function mailLessonSign_(studentName, dateText, lang, nextText) {
     html: wrapHtml_('<p>' + escHtml_(body) + '</p>' + (next ? '<p><b>' + escHtml_(next) + '</b></p>' : '') + link.html) };
 }
 
-function mailTuition_(studentName, note, lang) {
+function mailTuition_(studentName, note, lang, tu) {
   var zh = lang !== 'en';
   var studio = studioName_(lang), link = linkLine_(lang);
   var subject = zh ? studio + '：学费提醒' : studio + ': tuition reminder';
-  var body = zh ? studentName + ' 本期 10 节课已经上完，请交下一期学费。' : studentName + ' has finished all 10 lessons in this term. Next term\'s tuition is due.';
+  var month = tu && tu.mode === 'month';
+  var n = tu && tu.n ? tu.n : 10;
+  var body = month
+    ? (zh ? studentName + ' 的 ' + tu.month + ' 月份学费还没交，请交学费。' : studentName + ': tuition for ' + tu.month + ' has not been paid yet.')
+    : (zh ? studentName + ' 本期 ' + n + ' 节课已经上完，请交下一期学费。' : studentName + ' has finished all ' + n + ' lessons in this term. Next term\'s tuition is due.');
   var noteHtml = note ? '<p style="white-space:pre-wrap;background:#F3EADA;border-radius:8px;padding:10px 12px">' + escHtml_(note) + '</p>' : '';
   return { subject: subject, from: studio, text: body + (note ? '\n\n' + note : '') + link.text, html: wrapHtml_('<p>' + escHtml_(body) + '</p>' + noteHtml + link.html) };
+}
+
+/** 老师改了上课时间或取消了课：给学生（家长）一封说明。时间按学生所在时区写。 */
+function mailLessonChange_(studentName, kind, oldText, newText, lang) {
+  var zh = lang !== 'en';
+  var studio = studioName_(lang), link = linkLine_(lang);
+  var cancelled = kind === 'cancelled';
+  var subject = zh ? studio + (cancelled ? '：课程取消通知' : '：上课时间变更') : studio + (cancelled ? ': lesson cancelled' : ': lesson time changed');
+  var body = cancelled
+    ? (zh ? studentName + ' 原定 ' + oldText + ' 的课已取消。新的时间老师会另行通知。' : studentName + '\'s lesson on ' + oldText + ' has been cancelled. The teacher will let you know the new time.')
+    : (zh ? studentName + ' 的上课时间有变化：\n原定：' + oldText + '\n改为：' + newText + '（按学生所在时区）\n已经加入自己日历的，请手动更新一下。'
+          : 'The lesson time for ' + studentName + ' has changed:\nWas: ' + oldText + '\nNow: ' + newText + ' (in the student\'s time zone)\nIf you already added it to your own calendar, please update it.');
+  return { subject: subject, from: studio, text: body + link.text, html: wrapHtml_('<p style="white-space:pre-wrap">' + escHtml_(body) + '</p>' + link.html) };
 }
 
 function mailTeacherMessage_(fromName, text, lang) {

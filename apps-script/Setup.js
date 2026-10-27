@@ -147,6 +147,10 @@ function seedFakeData_(owner) {
           if (recent) { var nx = new Date(now + c.nextIn * DAY); nx.setMinutes(0, 0, 0); nt.next = iso_(nx.getTime() + HOUR); }
           return nt;
         })(), hwDone: [] });
+      if (recent) { // 最近一节课填了“下次上课”：同时是日历里的一条排课
+        var nxIso = iso_(new Date(new Date(now + c.nextIn * DAY).setMinutes(0, 0, 0)) .getTime() + HOUR);
+        dbInsert_('Events', { id: 'e-' + c.id.slice(2) + '-1', sid: c.id, start: nxIso, dur: c.dur, note: '', status: 'scheduled', src: 'l-' + c.id.slice(2) + '-' + (i + 1), created: iso_(now), updated: iso_(now) });
+      }
     }
   });
 

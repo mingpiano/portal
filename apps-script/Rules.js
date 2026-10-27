@@ -9,12 +9,35 @@
  *   剩余 = paid × 10 − 已上；≤ 0 就该交下一期了
  *   used = 当前这一期里已上几节（0–10），用来画琴键进度
  */
-function tuition_(student, doneCount) {
-  var paid = student.paid || 0, carry = student.carry || 0;
+function ymKey_(ms, tz) { return Utilities.formatDate(new Date(ms), tz, 'yyyy-MM'); }
+function ymIndex_(key) { var m = /^(\d{4})-(\d{2})$/.exec(key); return m ? +m[1] * 12 + (+m[2] - 1) : 0; }
+
+/**
+ * 学费：每个学生可以选“每 N 节一期”（默认 10 节）或“按月”。
+ * 每 N 节：left = 已交期数 × N − 已上课数（含上线前已上的）；left ≤ 0 就该交下一期。
+ * 按月：从 billFrom 那个月起，每个日历月一期（按老师所在时区算月份）；已交月数少于已过去的月数就该交。
+ * 返回 {mode, n, done, consumed, left, used, due, ...}：n 是每期节数（按月时为 0），used 是本期（本月）已上几节。
+ */
+function tuition_(student, doneCount, doneMs, nowMs, tz) {
+  var paid = student.paid || 0;
+  if (student.billing === 'month') {
+    tz = tz || teacherTz_(); nowMs = nowMs == null ? now_() : nowMs;
+    var cur = ymKey_(nowMs, tz);
+    var from = /^\d{4}-\d{2}$/.test(student.billFrom || '') ? student.billFrom : cur;
+    var elapsed = Math.max(0, ymIndex_(cur) - ymIndex_(from) + 1);
+    var inMonth = (doneMs || []).filter(function (m) { return ymKey_(m, tz) === cur; }).length;
+    return { mode: 'month', n: 0, done: doneCount, consumed: inMonth, left: paid - elapsed, used: inMonth, due: paid < elapsed, month: cur, owed: Math.max(0, elapsed - paid) };
+  }
+  var N = student.term > 0 ? student.term : 10, carry = student.carry || 0;
   var consumed = carry + doneCount;
-  var left = paid * 10 - consumed;
-  var used = Math.max(0, Math.min(10, consumed - Math.max(paid - 1, 0) * 10));
-  return { done: doneCount, consumed: consumed, left: left, used: used, due: left <= 0 };
+  var left = paid * N - consumed;
+  var used = Math.max(0, Math.min(N, consumed - Math.max(paid - 1, 0) * N));
+  return { mode: 'lessons', n: N, done: doneCount, consumed: consumed, left: left, used: used, due: left <= 0 };
+}
+/** 某位学生现在的学费状态（自己去查已上的课）。 */
+function tuitionFor_(s) {
+  var done = dbAll_('Lessons').filter(function (l) { return l.sid === s.id && l.status === 'done'; });
+  return tuition_(s, done.length, done.map(function (l) { return ms_(l.date); }), now_(), teacherTz_());
 }
 
 /** 一节课的签字状态：signed 学生签了；auto 超过 48 小时自动确认（不加分）；pending 还在等。 */
@@ -122,4 +145,15 @@ function nextLesson_(lessons, nowMs) {
   var latest = done[0];
   var n = latest && latest.notes && latest.notes.next ? ms_(latest.notes.next) : 0;
   return n > nowMs ? iso_(n) : '';
+}
+
+/**
+ * 下次上课时间：日历里这位学生最早的、还没取消的未来课程。
+ * 这位学生从来没有日历条目时（上线日历之前的老数据），退回用最近一节课里填的“下次上课”。
+ */
+function nextFor_(lessons, events, nowMs) {
+  if (!events.length) { var n = nextLesson_(lessons, nowMs); return n ? { start: n, id: '' } : null; }
+  var up = events.filter(function (e) { return e.status === 'scheduled' && ms_(e.start) > nowMs; })
+    .sort(function (a, b) { return ms_(a.start) - ms_(b.start); })[0];
+  return up ? { start: up.start, id: up.id } : null;
 }

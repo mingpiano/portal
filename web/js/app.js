@@ -3,7 +3,7 @@ import { CONFIGURED } from './config.js';
 import { t, tx, getLang, setLang } from './i18n.js';
 import * as V from './views.js';
 import { applyTheme } from './theme.js';
-import { fieldsToMs, wallFields, nowFields } from './util.js';
+import { fieldsToMs, wallFields, nowFields, icsCalendar } from './util.js';
 
 /* ---------- 本机存储（只放“个人偏好”和登录令牌；读写都包 try，隐私模式下也能用） ---------- */
 const KEY = { token: 'ms.token', lang: 'ms.lang' };
@@ -17,7 +17,7 @@ const S = {
   screen: 'boot',              // boot | offline | login | app
   token: null, data: null, tab: null, kid: null, msgSel: null, recSid: null,
   showArchived: false, modal: null, avDraft: null, busy: false, lastSync: 0,
-  upload: null, upName: '', upSize: 0, resKind: 'file', dl: null, viewer: null, recN: 1, recHw: {}, recEdit: null, recDraft: null, preview: null, adminData: null, adminLang: null, crop: null,
+  upload: null, upName: '', upSize: 0, resKind: 'file', dl: null, viewer: null, recN: 1, recHw: {}, recEdit: null, recDraft: null, calMonth: null, calDay: null, preview: null, adminData: null, adminLang: null, crop: null,
   fresh: { n: new Set(), m: new Set(), r: new Set() }, readTried: new Set(),
   login: { step: 'email', email: '', ticket: null, accounts: [], err: '', busy: false, remember: true, cooldown: 0 }
 };
@@ -240,7 +240,21 @@ function recMs(prefix) {
   if (!dateEl) return null;
   return fieldsToMs(dateEl.value, +v(prefix + 'h'), +v(prefix + 'm'), v(prefix + 'ap'), S.data.teacherTz);
 }
+/** 添加 / 修改课程的弹窗里，“学生那边是几点”的提示。 */
+function updateEvHint() {
+  const h = $('#ev-hint'); if (!h || !S.modal || S.modal.type !== 'event') return;
+  const who = $('#ev-student') || $('#modal-root input[name=sid]');
+  const ms = fieldsToMs($('#ev-date').value, +$('#rec-eh').value, +$('#rec-em').value, $('#rec-eap').value, S.data.teacherTz);
+  h.textContent = ms == null ? tx('err.bad_time') : V.tzHint(S, who && who.value, ms);
+}
+const addDays = (ymd, n) => { const [y, m, d] = ymd.split('-').map(Number), t = new Date(Date.UTC(y, m - 1, d + n)); return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`; };
+function downloadText(name, text, mime) {
+  const url = URL.createObjectURL(new Blob([text], { type: mime })), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
 function updateHints() {
+  updateEvHint();
   if (S.screen !== 'app' || S.tab !== 'record' || !$('#rec-hint')) return;
   const sid = ($('#rec-student') || {}).value;
   const ms = recMs('t'), nms = $('#rec-ndate').value ? recMs('n') : null;
@@ -408,6 +422,23 @@ const FORMS = {
     const r = S.recEdit ? await run('lessons.edit', { id: S.recEdit, ...body }, { fresh: true }) : await run('lessons.log', { sid, ...body }, { fresh: true });
     if (r.ok) { const was = S.recEdit; recReset(); render({ keep: false }); toast(tx(was ? 'rec.savedEdit' : 'rec.saved')); if (was) window.scrollTo(0, 0); }
   },
+  async 'ev-save'(f, fd) {
+    const tz = S.data.teacherTz, date = String(fd.get('date') || ''), h = +fd.get('eh'), mi = +fd.get('em'), ap = fd.get('eap');
+    const ms = fieldsToMs(date, h, mi, ap, tz); if (ms == null) return toast(tx('err.bad_time'));
+    const dur = num(fd.get('dur')), note = String(fd.get('note') || '').trim();
+    let r;
+    if (f.dataset.id) r = await run('events.edit', { id: f.dataset.id, start: new Date(ms).toISOString(), dur, note, notify: !!fd.get('notify') }, { fresh: true });
+    else {
+      const n = Math.min(26, Math.max(1, Math.floor(Number(fd.get('rep')) || 1))), starts = [];
+      for (let k = 0; k < n; k++) { const m2 = fieldsToMs(addDays(date, 7 * k), h, mi, ap, tz); if (m2 == null) return toast(tx('err.bad_time')); starts.push(new Date(m2).toISOString()); }
+      r = await run('events.add', { sid: fd.get('sid'), starts, dur, note }, { fresh: true });
+    }
+    if (r.ok) {
+      S.modal = null; S.calDay = date; S.calMonth = date.slice(0, 7); render({ keep: false });
+      const ov = (r.data && r.data.overlap) || [];
+      toast(ov.length ? tx('cal.overlap', { names: ov.join(', ') }) : tx('common.saved'));
+    }
+  },
   async 'profile-birth'(f, fd) {
     const body = { birth: String(fd.get('birth') || '') };
     if (S.data.me.role === 'parent') body.sid = f.dataset.id;
@@ -416,7 +447,9 @@ const FORMS = {
   },
   async 'student-save'(f, fd) {
     const student = { name: fd.get('name'), email: fd.get('email'), kind: fd.get('kind'), lang: fd.get('lang'), birth: fd.get('birth') || '', start: fd.get('start') || '',
-      tz: fd.get('tz') || undefined, level: fd.get('level'), grp: fd.get('grp'), dur: num(fd.get('dur')), paid: num(fd.get('paid')), carry: num(fd.get('carry')), adj: num(fd.get('adj')), showPoints: !!fd.get('showPoints') };
+      tz: fd.get('tz') || undefined, level: fd.get('level'), grp: fd.get('grp'), dur: num(fd.get('dur')), paid: num(fd.get('paid')), carry: fd.has('carry') ? num(fd.get('carry')) : ((stuById(f.dataset.id) || {}).carry || 0), adj: num(fd.get('adj')), showPoints: !!fd.get('showPoints'),
+      billing: fd.get('billing') || 'lessons', billFrom: fd.get('billFrom') || '' };
+    if (fd.has('term')) student.term = num(fd.get('term'));
     if (f.dataset.id) student.id = f.dataset.id;
     student.books = readBookRows(f);
     if (student.books.some(b => !b.n)) return toast(tx('err.book_name'));
@@ -514,9 +547,36 @@ const ACT = {
   remind(d) { S.modal = { type: 'remind', id: d.id }; render({ keep: false }); focusFirst('#modal-root'); },
   paid(d) {
     const s = stuById(d.id);
-    S.modal = { type: 'confirm', title: 'cf.paidTitle', body: 'cf.paidBody', vars: { name: s.name }, yes: 'ov.paid',
+    S.modal = { type: 'confirm', title: 'cf.paidTitle', body: s.tuition.mode === 'month' ? 'cf.paidBodyMonth' : 'cf.paidBody', vars: { name: s.name, t: s.tuition.n }, yes: 'ov.paid',
       run: async () => { const r = await run('tuition.paid', { sid: s.id, expectPaid: s.paid }, { fresh: true }); if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); } else { S.modal = null; render({ keep: false }); } } };
     render({ keep: false });
+  },
+  'cal-day'(d) { S.calDay = d.day; S.calMonth = d.day.slice(0, 7); render({ keep: false }); },
+  'cal-month'(d) {
+    const tz = V.calTz ? V.calTz(S) : S.data.teacherTz, cur = S.calMonth || wallFields(Date.now(), tz).date.slice(0, 7);
+    const [y, m] = cur.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + Number(d.d), 1));
+    S.calMonth = `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}`; S.calDay = null; render({ keep: false });
+  },
+  'cal-today'() { S.calMonth = null; S.calDay = null; render({ keep: false }); },
+  'ev-new'(d) { S.modal = { type: 'event', day: d.day || '' }; render({ keep: false }); },
+  'ev-edit'(d) { S.modal = { type: 'event', id: d.id }; render({ keep: false }); },
+  async 'ev-status'(d) {
+    const n = $('#modal-root input[name=notify]');
+    const r = await run('events.edit', { id: d.id, status: d.to, notify: !!(n && n.checked) }, { fresh: true });
+    if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); }
+  },
+  'ev-del'(d) {
+    S.modal = { type: 'confirm', title: 'cal.delTitle', body: 'cal.delBody', vars: {}, yes: 'common.delete',
+      run: async () => { const r = await run('events.delete', { id: d.id }, { fresh: true }); S.modal = null; render({ keep: false }); if (r.ok) toast(tx('common.saved')); } };
+    render({ keep: false });
+  },
+  'ev-ics'(d) {
+    const e = (S.data.events || []).find(x => x.id === d.id); if (!e) return;
+    downloadText('lesson.ics', icsCalendar([V.evCalData(S, e)]), 'text/calendar;charset=utf-8');
+  },
+  'ev-ics-all'() {
+    const up = (S.data.events || []).filter(e => e.status === 'scheduled' && Date.parse(e.start) > Date.now());
+    if (up.length) downloadText('lessons.ics', icsCalendar(up.map(e => V.evCalData(S, e))), 'text/calendar;charset=utf-8');
   },
   'lesson-edit'(d) {
     const l = S.data.lessons.find(x => x.id === d.id); if (!l) return;
@@ -629,6 +689,8 @@ const CHANGE = {
     const ti = $('#res-title'); if (ti && !ti.value.trim()) ti.value = f.name.replace(/\.[^.]+$/, '').slice(0, 200);
     render();
   },
+  'ev-student'(el) { const s = stuById(el.value), dur = $('#ev-dur'); if (s && dur) dur.value = s.dur; updateEvHint(); },
+  'bill-mode'(el) { S.modal.billing = el.value; render(); },
   'rec-count'(el) { S.recN = Math.min(V.REC_MAX_PIECES, Math.max(1, Number(el.value) || 1)); render(); },
   'rec-hw'(el) { S.recHw = { ...S.recHw, [el.dataset.i]: el.value }; render(); },
   'rec-student'(el) {

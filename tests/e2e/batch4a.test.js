@@ -152,4 +152,15 @@ describe('批次四·一：登录时间、生日、改课记录、作品集', ()
     assert.ok(chips.filter(c => !c.tick).length >= 1 && chips.filter(c => !c.tick).every(c => !/✓/.test(c.t)), '正在学的没有 ✓');
     assert.deepEqual(s.errors, []);
   });
+
+  test('正在学的教材 / 单曲 / 作品集一个都不打勾（第 2 个以后也不打），学完的全部打勾', async () => {
+    await adminCall('books.save', { sid: 's-emma', books: [
+      { n: 'A', s: 'current' }, { n: 'B', s: 'current', k: 'single', f: 'X' }, { n: 'C', s: 'current' }, { n: 'D', s: 'current', k: 'portfolio', u: 'https://youtu.be/d' },
+      { n: 'E', s: 'done' }, { n: 'F', s: 'done', k: 'single' }] });
+    const s = await newPage(); await login(s, al('emma'));
+    await tab(s, 'learning');
+    const cur = await s.locator('.pbook').evaluateAll(els => els.map(e => ({ t: e.innerText.trim(), tick: !!e.querySelector('.tick') })));
+    for (const n of ['A', 'B', 'C', 'D']) assert.equal(cur.find(c => c.t.includes(n + (n === 'B' ? '' : ''))).tick, false, n + ' 正在学，不该有 ✓');
+    for (const n of ['E', 'F']) assert.equal(cur.find(c => new RegExp('(^|\\s)' + n + '(\\s|$)').test(c.t)).tick, true, n + ' 学完了，该有 ✓');
+  });
 });

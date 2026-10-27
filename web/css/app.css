@@ -435,3 +435,37 @@ h1.bn-1{font-size:1.6rem}
 .edit-note{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:.9rem}
 .pbook .tick{color:var(--ok,#2f7d4f);font-weight:700}
 .pbook a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+
+/* 日历 */
+.cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cal-nav h2{flex:1;text-align:center;margin:0;font-size:1.1rem}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-wd{text-align:center;font-size:.78rem;color:var(--ink-2);padding:2px 0}
+.cal-cell{min-height:64px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:4px;text-align:left;display:flex;flex-direction:column;gap:2px;overflow:hidden;font:inherit;color:inherit;cursor:pointer}
+.cal-cell.empty{border:0;background:transparent;cursor:default}
+.cal-cell.today .cal-d{background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 6px}
+.cal-cell.sel{outline:2px solid var(--accent);outline-offset:-1px}
+.cal-d{font-size:.82rem;align-self:flex-start}
+.cal-chip{font-size:.7rem;line-height:1.25;background:var(--accent-soft);border-radius:4px;padding:1px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-chip.cancelled{text-decoration:line-through;opacity:.55}
+.cal-chip.done{opacity:.6}
+.cal-more{font-size:.7rem;color:var(--ink-2)}
+@media (max-width:640px){
+  .cal-cell{min-height:48px;align-items:center;padding:3px 2px}
+  .cal-d{align-self:center}
+  .cal-chip{font-size:0;width:6px;height:6px;padding:0;border-radius:50%;background:var(--accent);display:inline-block}
+  .cal-cell.has{flex-direction:column}
+  .cal-more{display:none}
+}
+.evlist{display:flex;flex-direction:column;gap:10px}
+.evrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ev-bar{width:4px;align-self:stretch;border-radius:2px;background:var(--accent)}
+.evrow.cancelled .ev-bar{background:var(--line)}
+.evrow.cancelled .ev-t,.evrow.cancelled .ev-n b{text-decoration:line-through;color:var(--ink-2)}
+.evrow.done .ev-bar{background:#8fb89a}
+.ev-t{font-weight:600}
+.ev-n{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ev-act{display:flex;gap:6px;flex-wrap:wrap}
+.kbar{position:relative;height:26px;background:var(--surface-2);border-radius:8px;overflow:hidden;margin:6px 0}
+.kbar-fill{position:absolute;inset:0 auto 0 0;background:var(--accent-soft)}
+.kbar-t{position:relative;display:block;text-align:center;line-height:26px;font-size:.85rem}

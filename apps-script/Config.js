@@ -6,9 +6,9 @@
  * 以下划线结尾的函数是内部函数，网页只能通过 doPost 里登记的 action 调用。
  */
 
-var SCHEMA_VERSION = 5;
+var SCHEMA_VERSION = 6;
 /** 后台程序版本：网页发现后台比自己旧（忘了发布新版本），会提醒老师。每批功能 +1。 */
-var API_VERSION = 4;
+var API_VERSION = 5;
 
 /* ---------- 登录相关限制 ---------- */
 var CODE_TTL_MS = 10 * 60 * 1000;          // 验证码 10 分钟有效
@@ -26,11 +26,13 @@ var MAX_SESSIONS_PER_ACCOUNT = 10;
 var MAIL_QUOTA_FLOOR = 10;                 // Gmail 剩余额度低于这个数就不再发邮件，留给老师自己的重要邮件
 var AUTO_SIGN_MS = 48 * 3600 * 1000;       // 课后 48 小时没签字就自动确认（不加分）
 var MSG_MAIL_THROTTLE_MS = 10 * 60 * 1000; // 同一个学生的留言，10 分钟内最多提醒老师一次（连发几条只发一封）
+var EVENT_MAX_REPEAT = 26;                   // 一次最多排 26 周
+var EVENT_PAST_DAYS = 120;                  // 日历里给网页看多久以前的课
 var SEEN_TOUCH_MS = 30 * 60 * 1000;        // “最近登录”最多每 30 分钟更新一次
 
 /* ---------- 文字长度上限 ---------- */
 var LIMITS = { name: 80, email: 120, level: 80, grp: 40, title: 200, body: 4000, text: 2000,
-  piece: 120, focus: 500, tempo: 40, homework: 800, note: 1000, book: 80, hwItems: 20, avatarImg: 16000 };
+  piece: 120, focus: 500, evNote: 200, tempo: 40, homework: 800, note: 1000, book: 80, hwItems: 20, avatarImg: 16000 };
 
 /**
  * 表结构。每一项是 '列名' 或 '列名:类型'。
@@ -43,10 +45,11 @@ var SHEETS_ = {
   Admins:   ['email', 'name', 'avatar:j', 'active:b'],
   Students: ['id', 'name', 'email', 'kind', 'birth:d', 'start:d', 'adj:i', 'lang', 'level', 'grp', 'dur:i',
              'paid:i', 'carry:i', 'claimed:b', 'showPoints:b', 'avatar:j', 'books:j', 'active:b', 'created', 'tz',
-             'codeHash', 'codeVer:i', 'codeFails:i', 'codeLock:i', 'lastSeen'],
+             'codeHash', 'codeVer:i', 'codeFails:i', 'codeLock:i', 'lastSeen', 'term:i', 'billing', 'billFrom'],
   Parents:  ['id', 'name', 'email', 'lang', 'avatar:j', 'active:b', 'created', 'lastSeen'],
   Pairs:    ['parentId', 'studentId'],
   Lessons:  ['id', 'sid', 'date', 'dur:i', 'status', 'confirmedAt', 'signedAt', 'signedBy', 'loggedAt', 'notes:j', 'hwDone:j'],
+  Events:   ['id', 'sid', 'start', 'dur:i', 'note', 'status', 'src', 'created', 'updated'],
   Notices:  ['id', 'ts', 'scope', 'sid', 'aud', 'title', 'body', 'readBy:j'],
   Messages: ['id', 'sid', 'from', 'pid', 'ts', 'text', 'readBy:j'],
   Resources: ['id', 'title', 'kind', 'name', 'mime', 'size:i', 'parts:i', 'chunks:j', 'url', 'note', 'ts', 'all:b', 'sids:j', 'status', 'seenBy:j'],
@@ -77,6 +80,7 @@ var DEFAULT_CONFIG = {
   studio_name_en: STUDIO_FULL,
   teacher_tz: DEFAULT_TZ,
   'mail.lessonSign': 'true',      // 记课后给学生（或家长）发一封请签字的邮件
+  'mail.lessonChange': 'true',    // 老师改时间 / 取消课程时，给学生（或家长）发邮件
   'mail.teacherOnMessage': 'true', // 学生或家长留言时给老师发邮件提醒
   teacher_lang: 'zh'              // 给老师发的邮件用什么语言
 };

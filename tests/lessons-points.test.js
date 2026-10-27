@@ -244,10 +244,10 @@ describe('纯规则（不碰表格）', () => {
 
   test('tuition_：整期边界', () => {
     const t = (paid, carry, done) => plain(c.tuition_({ paid, carry }, done));
-    assert.deepEqual(t(1, 0, 0), { done: 0, consumed: 0, left: 10, used: 0, due: false });
-    assert.deepEqual(t(1, 0, 9), { done: 9, consumed: 9, left: 1, used: 9, due: false });
-    assert.deepEqual(t(1, 0, 10), { done: 10, consumed: 10, left: 0, used: 10, due: true });
-    assert.deepEqual(t(2, 10, 3), { done: 3, consumed: 13, left: 7, used: 3, due: false });
+    assert.deepEqual(t(1, 0, 0), { mode: 'lessons', n: 10, done: 0, consumed: 0, left: 10, used: 0, due: false });
+    assert.deepEqual(t(1, 0, 9), { mode: 'lessons', n: 10, done: 9, consumed: 9, left: 1, used: 9, due: false });
+    assert.deepEqual(t(1, 0, 10), { mode: 'lessons', n: 10, done: 10, consumed: 10, left: 0, used: 10, due: true });
+    assert.deepEqual(t(2, 10, 3), { mode: 'lessons', n: 10, done: 3, consumed: 13, left: 7, used: 3, due: false });
     assert.equal(t(2, 10, 10).due, true);
     assert.equal(t(0, 0, 0).due, true, '一期都没交，也算该交');
     assert.equal(t(1, 0, 12).left, -2, '超课时显示为负数');

@@ -20,7 +20,7 @@ const GATES = {
   'students.save': ['admin'], 'students.archive': ['admin'], 'parents.save': ['admin'], 'parents.archive': ['admin'],
   'res.begin': ['admin'], 'res.chunk': ['admin'], 'res.finish': ['admin'], 'res.link': ['admin'], 'res.update': ['admin'], 'res.delete': ['admin'],
   'res.get': ['admin', 'parent', 'student'], 'res.seen': ['parent', 'student'],
-  'kidcode.set': ['admin'], 'kidcode.clear': ['admin'], 'pairs.set': ['admin'], 'books.save': ['admin'], 'lessons.log': ['admin'], 'lessons.edit': ['admin'], 'lessons.delete': ['admin'],
+  'kidcode.set': ['admin'], 'kidcode.clear': ['admin'], 'pairs.set': ['admin'], 'books.save': ['admin'], 'lessons.log': ['admin'], 'lessons.edit': ['admin'], 'events.add': ['admin'], 'events.edit': ['admin'], 'events.delete': ['admin'], 'lessons.delete': ['admin'],
   'tuition.paid': ['admin'], 'tuition.remind': ['admin'], 'rules.save': ['admin'], 'notices.send': ['admin']
 };
 const ROLE_WHO = { admin: 'admin', parent: 'li', student: 'emma' };

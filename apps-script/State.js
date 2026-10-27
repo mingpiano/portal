@@ -40,7 +40,10 @@ function buildState_(ctx) {
   var lessonsBy = {};
   dbAll_('Lessons').forEach(function (l) { (lessonsBy[l.sid] = lessonsBy[l.sid] || []).push(l); });
 
-  var points = {}, lessonsOut = [], studentsOut = [];
+  var eventsBy = {};
+  dbAll_('Events').forEach(function (e) { (eventsBy[e.sid] = eventsBy[e.sid] || []).push(e); });
+  var tzT = teacherTz_();
+  var points = {}, lessonsOut = [], studentsOut = [], eventsOut = [];
   visible.forEach(function (s) {
     var ls = lessonsBy[s.id] || [];
     var doneList = ls.filter(function (l) { return l.status === 'done'; });
@@ -53,11 +56,16 @@ function buildState_(ctx) {
       active: s.active, claimed: s.claimed, hasParent: kidParents.length > 0,
       lastSeen: admin ? s.lastSeen || '' : undefined,
       done: doneList.length, total: doneList.length + s.adj, hours: Math.round(mins / 6) / 10,
-      tuition: tuition_(s, doneList.length), learning: learning_(ls),
-      tz: studentTz_(s), next: nextLesson_(ls, now)
+      tuition: tuition_(s, doneList.length, doneList.map(function (l) { return ms_(l.date); }), now, tzT), learning: learning_(ls),
+      tz: studentTz_(s), term: s.term > 0 ? s.term : 10, billing: s.billing === 'month' ? 'month' : 'lessons'
     };
+    var nx = nextFor_(ls, eventsBy[s.id] || [], now);
+    out.next = nx ? nx.start : ''; out.nextId = nx ? nx.id : '';
+    (eventsBy[s.id] || []).forEach(function (e) {
+      if (ms_(e.start) >= now - EVENT_PAST_DAYS * 86400000) eventsOut.push({ id: e.id, sid: e.sid, start: e.start, dur: e.dur, note: e.note, status: e.status, src: e.src });
+    });
     if (admin) {
-      out.paid = s.paid; out.carry = s.carry; out.hasCode = !!s.codeHash;
+      out.paid = s.paid; out.carry = s.carry; out.hasCode = !!s.codeHash; out.billFrom = s.billFrom || '';
       out.parentIds = kidParents.map(function (p) { return p.parentId; });
     }
     studentsOut.push(out);
@@ -118,7 +126,8 @@ function buildState_(ctx) {
     studio: { zh: cfg.studio_name_zh, en: cfg.studio_name_en },
     now: iso_(now), rules: rules, me: me,
     students: studentsOut, parents: parentsOut, lessons: lessonsOut, points: points,
-    notices: notices, messages: messages, resources: resourcesOut_(ctx, ids)
+    notices: notices, messages: messages, resources: resourcesOut_(ctx, ids),
+    events: eventsOut.sort(function (a, b) { return ms_(a.start) - ms_(b.start); }).slice(-2500)
   };
   // 老师所在时区只给老师：学生和家长只看到自己所在时区的时间
   if (admin) out.teacherTz = teacherTz_();

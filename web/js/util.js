@@ -21,11 +21,15 @@ export function avatar(p, size = 34) {
 }
 
 /** 十个琴键的“本期进度”。 */
-export function keyboard(used, label) {
-  const W = 24, H = 80, n = 10;
+export function keyboard(used, label, n = 10) {
+  n = Math.max(1, Number(n) || 10); used = Math.max(0, Math.min(n, Number(used) || 0));
+  if (n > 14) { // 一期节数太多，琴键画不下，改用进度条
+    return `<div class="kbar" role="img" aria-label="${esc(label)}"><div class="kbar-fill" style="width:${Math.round(used / n * 100)}%"></div><span class="kbar-t num">${used} / ${n}</span></div>`;
+  }
+  const W = 24, H = 80;
   let s = `<svg class="kb" viewBox="0 0 ${W * n + 2} ${H + 2}" role="img" aria-label="${esc(label)}">`;
   for (let i = 0; i < n; i++) s += `<rect x="${1 + i * W}" y="1" width="${W}" height="${H}" rx="3" class="wk${i < used ? ' on' : ''}"/>`;
-  [0, 1, 3, 4, 5, 7, 8].forEach(i => { s += `<rect x="${1 + (i + 1) * W - 7}" y="1" width="14" height="${H * .58}" rx="2" class="bk"/>`; });
+  for (let i = 0; i < n - 1; i++) if ([0, 1, 3, 4, 5].includes(i % 7)) s += `<rect x="${1 + (i + 1) * W - 7}" y="1" width="14" height="${H * .58}" rx="2" class="bk"/>`;
   for (let i = 0; i < n; i++) s += `<text x="${1 + i * W + W / 2}" y="${H - 8}" class="kn num${i < used ? ' on' : ''}">${i + 1}</text>`;
   return s + '</svg>';
 }
@@ -151,4 +155,35 @@ export function tempoText(tp, name) { return tp && tp.b ? `${noteSym(tp.n, name(
 export function fmtSize(n) {
   n = Number(n) || 0;
   return n >= 1048576 ? (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+}
+
+
+/* ---------- 日历文件（.ics）和 Google 日历链接 ---------- */
+const icsEsc = x => String(x == null ? '' : x).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const icsStamp = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+/** 一行最多 75 字节，超过的折行（下一行以空格开头）。按字节算，中文不会被切成半个字。 */
+function icsFold(line) {
+  const enc = new TextEncoder(), out = []; let cur = '', bytes = 0, limit = 75;
+  for (const ch of line) {
+    const n = enc.encode(ch).length;
+    if (bytes + n > limit) { out.push(cur); cur = ' '; bytes = 1; limit = 75; }
+    cur += ch; bytes += n;
+  }
+  out.push(cur); return out.join('\r\n');
+}
+/** events: [{id, start, dur, title, desc, cancelled}]。同一个 id 再导入一次，日历软件会更新而不是重复添加。 */
+export function icsCalendar(events, now = Date.now()) {
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Keynote Portal//Lessons//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+  for (const e of events) {
+    const st = Date.parse(e.start);
+    L.push('BEGIN:VEVENT', `UID:${e.id}@keynote-portal`, `DTSTAMP:${icsStamp(now)}`, `DTSTART:${icsStamp(st)}`, `DTEND:${icsStamp(st + e.dur * 60000)}`,
+      `SUMMARY:${icsEsc(e.title)}`, ...(e.desc ? [`DESCRIPTION:${icsEsc(e.desc)}`] : []), `STATUS:${e.cancelled ? 'CANCELLED' : 'CONFIRMED'}`, 'END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  return L.map(icsFold).join('\r\n') + '\r\n';
+}
+export function googleCalUrl(e) {
+  const st = Date.parse(e.start), q = new URLSearchParams({ action: 'TEMPLATE', text: e.title, dates: `${icsStamp(st)}/${icsStamp(st + e.dur * 60000)}` });
+  if (e.desc) q.set('details', e.desc);
+  return 'https://calendar.google.com/calendar/render?' + q.toString();
 }

@@ -21,7 +21,7 @@ const crypto = require('node:crypto');
 
 const SRC_DIR = path.join(__dirname, '..', '..', 'apps-script');
 // 与 Apps Script 里文件的先后无关（全是函数声明），这里只是固定一个顺序
-const FILES = ['Config.js', 'Util.js', 'Db.js', 'Rules.js', 'Mail.js', 'Auth.js', 'State.js', 'Handlers.js', 'Resources.js', 'Api.js', 'Setup.js'];
+const FILES = ['Config.js', 'Util.js', 'Db.js', 'Rules.js', 'Mail.js', 'Auth.js', 'State.js', 'Handlers.js', 'Resources.js', 'Calendar.js', 'Api.js', 'Setup.js'];
 
 function isDate(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
 
@@ -145,6 +145,7 @@ function createRuntime(opts = {}) {
       base64Encode: bytes => Buffer.from(bytes.map(b => (b < 0 ? b + 256 : b))).toString('base64'),
       newBlob: (bytes, type, name) => ({ _bytes: bytes, getBytes: () => bytes, getContentType: () => type || '', getName: () => name || '' }),
       formatDate: (d, tz, fmt) => {
+        if (fmt === 'yyyy-MM') return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).slice(0, 7);
         if (fmt === 'yyyy-MM-dd') return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
         // 和真正的 Apps Script 一样：h:mm a → “3:00 PM”（新版 ICU 会在 PM 前放窄空格，统一成普通空格）
         if (fmt === 'h:mm a') return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true }).format(d).replace(/\u202f/g, ' ');

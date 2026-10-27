@@ -46,6 +46,9 @@ function actions_() {
     'kidcode.clear':    { fn: hKidCodeClear_, write: true, state: true, roles: ['admin'] },
     'books.save':       { fn: hBooksSave_, write: true, state: true, roles: ['admin'] },
     'lessons.log':      { fn: hLessonLog_, write: true, state: true, roles: ['admin'] },
+    'events.add':       { fn: hEventAdd_, write: true, state: true, roles: ['admin'] },
+    'events.edit':      { fn: hEventEdit_, write: true, state: true, roles: ['admin'] },
+    'events.delete':    { fn: hEventDelete_, write: true, state: true, roles: ['admin'] },
     'lessons.edit':     { fn: hLessonEdit_, write: true, state: true, roles: ['admin'] },
     'lessons.delete':   { fn: hLessonDelete_, write: true, state: true, roles: ['admin'] },
     'tuition.paid':     { fn: hTuitionPaid_, write: true, state: true, roles: ['admin'] },
@@ -111,7 +114,10 @@ function migrateSchema_() {
   if (!lock.tryLock(20000)) fail_('busy');
   try {
     resetRequest_();
+    var oldVer = Number(getConfigMap_().schema_version || 0);
     ensureSchema_(ss_());
+    resetRequest_();
+    if (oldVer < 6) migrateEvents_(); // 第 6 版起有日历：把还没过去的“下次上课”变成排课
     setConfig_('schema_version', SCHEMA_VERSION);
   } finally { lock.releaseLock(); }
 }
