@@ -114,7 +114,7 @@ export function shell(S, body) {
     ? `<div class="who">${nameLine}${avatar(me, 32)}<button class="btn sm primary" data-act="preview-exit">${t('prev.exit')}</button></div>`
     : `<div class="who">${nameLine}<button class="avbtn" data-act="av-open" aria-label="${esc(tx('av.change'))}">${avatar(me, 32)}</button>${langBtn()}<button class="btn sm" data-act="logout">${t('app.logout')}</button></div>`;
   const pv = S.preview ? `<div class="prev-note" role="note"><div class="wrap">${t('prev.banner', { name: me.name })} <button class="btn sm" data-act="preview-exit">${t('prev.exit')}</button></div></div>` : '';
-  const WANT_API = 3; // 要和 apps-script/Config.js 的 API_VERSION 一致
+  const WANT_API = 4; // 要和 apps-script/Config.js 的 API_VERSION 一致
   const old = me.role === 'admin' && !S.preview && (S.data.apiVer || 0) < WANT_API ? `<div class="ver-note" role="alert"><div class="wrap">${t('ver.old')}</div></div>` : '';
   return `${old}${pv}<header class="bar"><div class="wrap">
       <div class="brand">${logoImg(34)}${brandText('b')}</div>
@@ -157,7 +157,7 @@ function lessonBlock(S, l, { canSign, withStudent } = {}) {
     : l.signState === 'auto' ? pill('plain', t('les.auto'))
       : canSign ? `<button class="btn sm primary" data-act="sign" data-id="${esc(l.id)}">${t('les.sign')}</button>` : pill('wait', t('les.waiting'));
   const stu = withStudent ? byId(S.data.students, l.sid) : null;
-  const del = role(S) === 'admin' ? `<button class="btn sm" data-act="lesson-del" data-id="${esc(l.id)}">${t('common.delete')}</button>` : '';
+  const del = role(S) === 'admin' ? `<button class="btn sm" data-act="lesson-edit" data-id="${esc(l.id)}">${t('common.edit')}</button><button class="btn sm" data-act="lesson-del" data-id="${esc(l.id)}">${t('common.delete')}</button>` : '';
   const tz = viewTz(S, l.sid);
   return `<div class="lesson"><div class="no num">${l.n}<small>${esc(fmtDateZ(l.date, tz, L))}</small></div><div>
     ${stu ? `<p><b>${esc(stu.name)}</b> <span class="muted small">· ${t('les.minutes', { n: l.dur })}</span></p>` : ''}
@@ -371,7 +371,9 @@ function tuitionPayBanner(k) {
 
 /* ---------- 学生 / 家长：正在学习、课程记录、通知、留言、积分 ---------- */
 /** 教材标签：整本教材 📘，单曲 🎵（选自某本曲集时带上出处）；学过的前面打勾。 */
-const bookChip = (b, done) => `<span class="pbook">${done ? '✓' : b.k === 'single' ? '🎵' : '📘'} ${esc(b.n)}${b.k === 'single' && b.f ? ` <span class="muted small">· ${esc(tx('bk.from2', { f: b.f }))}</span>` : ''}</span>`;
+const bookIcon = b => b.k === 'single' ? '🎵' : b.k === 'portfolio' ? '🎬' : '📘';
+/** 一本教材 / 一首单曲 / 一个作品集。学完的前面打 ✓，正在学的不打勾（打勾容易被理解成“已经完成”）。 */
+const bookChip = (b, done) => `<span class="pbook">${done ? '<span class="tick" aria-label="' + esc(tx('bk.done')) + '">✓</span> ' : ''}${bookIcon(b)} ${b.k === 'portfolio' && /^https:\/\//i.test(b.u || '') ? `<a href="${esc(b.u)}" target="_blank" rel="noopener noreferrer">${esc(b.n)}</a>` : esc(b.n)}${b.k === 'single' && b.f ? ` <span class="muted small">· ${esc(tx('bk.from2', { f: b.f }))}</span>` : ''}</span>`;
 export function learningView(S) {
   const s = curKid(S), L = lg();
   if (!s) return '';
@@ -463,6 +465,12 @@ export function overviewView(S) {
 }
 
 /* ---------- 老师：学生与家长 ---------- */
+/** “最近登录：10月26日 3:05 PM（今天）”；没登录过就写“还没登录过”。 */
+const seenLine = x => {
+  if (!x.lastSeen) return esc(tx('seen.never'));
+  const days = Math.max(0, Math.floor((Date.now() - Date.parse(x.lastSeen)) / 86400000));
+  return esc(tx('seen.at', { when: fmtDT(x.lastSeen, lg()), ago: days === 0 ? tx('seen.today') : tx('seen.days', { n: days }) }));
+};
 export function studentsView(S) {
   const d = S.data, L = lg();
   const showArch = S.showArchived;
@@ -472,12 +480,13 @@ export function studentsView(S) {
   return `<div class="stack"><div class="page-h"><h1>${t('tab.students')}</h1><div class="btns"><button class="chip" data-act="toggle-archived" aria-pressed="${!!showArch}">${t('stu.showArchived')}</button><button class="btn primary sm" data-act="student-new">${t('stu.add')}</button></div></div>
     <section class="card"><div class="rows">${list.map(s => `<div class="row">${avatar(s, 38)}<div class="grow"><b>${esc(s.name)}</b> ${s.kind === 'adult' ? pill('plain', t('stu.adult')) : ''}${s.active ? '' : pill('bad', t('stu.archived'))}
         <div class="small muted">${esc(s.level)}${s.email ? ` · ${esc(s.email)}` : ''}</div>
+        <div class="small muted">${seenLine(s)}</div>
         <div class="small muted">${esc(tzName(s.tz, L))}${s.next ? ` · ${esc(tx('nx.row', { when: fmtWhenZ(s.next, d.teacherTz, L) }))}` : ''}</div></div>
         <div class="small num">${t('stu.tuitionRow', { u: s.tuition.used, l: Math.max(0, s.tuition.left) })}${s.tuition.due ? ' ' + pill('bad', t('stu.due')) : ''}</div>
         ${s.active ? `<button class="btn sm" data-act="preview" data-id="${esc(s.id)}">${t('prev.btn')}</button>` : ''}
         <button class="btn sm" data-act="student-edit" data-id="${esc(s.id)}">${t('common.edit')}</button></div>`).join('') || `<p class="muted">${t('stu.none')}</p>`}</div></section>
     <div class="page-h"><h2>${t('par.title')}</h2><button class="btn sm" data-act="parent-new">${t('par.add')}</button></div>
-    <section class="card"><div class="rows">${parents.map(p => `<div class="row">${avatar(p, 34)}<div class="grow"><b>${esc(p.name)}</b>${p.active ? '' : ' ' + pill('bad', t('stu.archived'))}<div class="small muted">${esc(p.email)}</div></div>
+    <section class="card"><div class="rows">${parents.map(p => `<div class="row">${avatar(p, 34)}<div class="grow"><b>${esc(p.name)}</b>${p.active ? '' : ' ' + pill('bad', t('stu.archived'))}<div class="small muted">${esc(p.email)}</div><div class="small muted">${seenLine(p)}</div></div>
         <div class="chips">${p.kids.map(k => `<span class="pill plain">${esc(kidName(k))}</span>`).join('')}</div>${p.active ? `<button class="btn sm" data-act="preview" data-kind="parent" data-id="${esc(p.id)}">${t('prev.btnParent')}</button>` : ''}<button class="btn sm" data-act="parent-edit" data-id="${esc(p.id)}">${t('common.edit')}</button></div>`).join('') || `<p class="muted">${t('par.none')}</p>`}</div></section></div>`;
 }
 
@@ -496,8 +505,9 @@ export function studentModal(S) {
       <p class="small muted">${t('kid.hint')}</p></div>` : '';
   const rows = S.modal.books || (s ? s.books : []) || [];
   const books = `<div class="f full books-ed"><b>${t('stu.books')}</b><p class="small muted">${t('stu.booksHelp')}</p>
-      ${rows.map((b, i) => `<div class="bk-row"><select name="bk${i}k" data-change="book-kind" aria-label="${esc(tx('bk.kind'))}"><option value="book" ${b.k === 'single' ? '' : 'selected'}>📘 ${t('bk.book')}</option><option value="single" ${b.k === 'single' ? 'selected' : ''}>🎵 ${t('bk.single')}</option></select>
-        <input type="text" id="bk${i}-n" name="bk${i}n" value="${val(b.n)}" maxlength="80" placeholder="${esc(tx(b.k === 'single' ? 'bk.phSingle' : 'bk.phBook'))}" aria-label="${esc(tx('bk.name'))}">
+      ${rows.map((b, i) => `<div class="bk-row"><select name="bk${i}k" data-change="book-kind" aria-label="${esc(tx('bk.kind'))}"><option value="book" ${b.k === 'single' || b.k === 'portfolio' ? '' : 'selected'}>📘 ${t('bk.book')}</option><option value="single" ${b.k === 'single' ? 'selected' : ''}>🎵 ${t('bk.single')}</option><option value="portfolio" ${b.k === 'portfolio' ? 'selected' : ''}>🎬 ${t('bk.portfolio')}</option></select>
+        <input type="text" id="bk${i}-n" name="bk${i}n" value="${val(b.n)}" maxlength="80" placeholder="${esc(tx(b.k === 'single' ? 'bk.phSingle' : b.k === 'portfolio' ? 'bk.phPort' : 'bk.phBook'))}" aria-label="${esc(tx('bk.name'))}">
+        ${b.k === 'portfolio' ? `<input type="url" id="bk${i}-u" name="bk${i}u" value="${val(b.u)}" maxlength="500" placeholder="${esc(tx('bk.phUrl'))}" aria-label="${esc(tx('bk.url'))}">` : ''}
         ${b.k === 'single' ? `<input type="text" id="bk${i}-f" name="bk${i}f" value="${val(b.f)}" maxlength="80" placeholder="${esc(tx('bk.phFrom'))}" aria-label="${esc(tx('bk.from'))}">` : ''}
         <select name="bk${i}s" aria-label="${esc(tx('bk.status'))}"><option value="current" ${b.s === 'done' ? '' : 'selected'}>${t('bk.current')}</option><option value="done" ${b.s === 'done' ? 'selected' : ''}>${t('bk.done')}</option></select>
         <button class="btn sm" type="button" data-act="book-del" data-i="${i}" aria-label="${esc(tx('common.delete'))}">✕</button></div>`).join('')}
@@ -574,7 +584,18 @@ export function avatarModal(S) {
     <div class="btns"><label class="btn file-btn">${t('av.upload')}<input type="file" accept="image/*" data-change="av-file" hidden></label></div>
     <div class="av-grid">${AVATAR_EMOJI.map(v => `<button class="av-opt" data-act="av-pick" data-v="${v}" aria-pressed="${draft.v === v}" aria-label="${v}">${v}</button>`).join('')}</div>
     <div class="opt-row"><span>${t('av.color')}</span><div class="chips">${AVATAR_COLORS.map(c => `<button class="sw" style="background:${c}" data-act="av-col" data-c="${c}" aria-pressed="${draft.c === c}" aria-label="${c}"></button>`).join('')}</div></div>
-    <div class="btns"><button class="btn primary" data-act="av-save" ${draft.v ? '' : 'disabled'}>${t('common.save')}</button>${me.avatar ? `<button class="btn" data-act="av-clear">${t('av.clear')}</button>` : ''}</div>${tz}`;
+    <div class="btns"><button class="btn primary" data-act="av-save" ${draft.v ? '' : 'disabled'}>${t('common.save')}</button>${me.avatar ? `<button class="btn" data-act="av-clear">${t('av.clear')}</button>` : ''}</div>${tz}${birthBox(S)}`;
+}
+
+/** 生日：学生自己填；孩子的，家长也可以填。 */
+function birthBox(S) {
+  const me = S.data.me;
+  const kids = me.role === 'student' ? S.data.students.filter(s => s.id === me.id) : me.role === 'parent' ? S.data.students.filter(s => s.kind === 'child') : [];
+  if (!kids.length) return '';
+  const today = new Date().toISOString().slice(0, 10);
+  return kids.map(k => `<form class="f tz-box" data-form="profile-birth" data-id="${esc(k.id)}"><b>${me.role === 'parent' ? esc(tx('pf.birthOf', { name: k.name })) : t('pf.birth')}</b>
+    <div class="tp-row"><input type="date" id="pf-birth-${esc(k.id)}" name="birth" value="${val(k.birth)}" max="${today}" min="1900-01-01"><button class="btn sm primary" type="submit">${t('common.save')}</button></div>
+    <p class="small muted">${t('pf.birthHelp')}</p></form>`).join('');
 }
 
 /* ---------- 老师：记课 ---------- */
@@ -596,49 +617,55 @@ export function tzHint(S, sid, ms) {
 export const REC_MAX_PIECES = 10;
 /** 速度输入：音符下拉 + 每分钟拍数。 */
 function tempoInputs(id, name, label, note, bpm) {
-  return `<div class="f"><span>${label}</span><div class="tempo-in"><select id="${id}-n" name="${name}n" aria-label="${esc(tx('rec.pNote'))}">${TEMPO_NOTES.map(n => `<option value="${n}" ${n === (note || 'q') ? 'selected' : ''}>${esc(noteSym(n, noteName(n)) === noteName(n) ? noteName(n) : noteSym(n, '') + ' ' + noteName(n))}</option>`).join('')}</select><span>=</span><input type="number" id="${id}-b" name="${name}b" inputmode="numeric" placeholder="80" aria-label="${esc(tx('rec.pBpm'))}"></div></div>`;
+  return `<div class="f"><span>${label}</span><div class="tempo-in"><select id="${id}-n" name="${name}n" aria-label="${esc(tx('rec.pNote'))}">${TEMPO_NOTES.map(n => `<option value="${n}" ${n === (note || 'q') ? 'selected' : ''}>${esc(noteSym(n, noteName(n)) === noteName(n) ? noteName(n) : noteSym(n, '') + ' ' + noteName(n))}</option>`).join('')}</select><span>=</span><input type="number" id="${id}-b" name="${name}b" inputmode="numeric" placeholder="80" value="${bpm ? esc(bpm) : ''}" aria-label="${esc(tx('rec.pBpm'))}"></div></div>`;
 }
 /** 记课表单里的一首曲子。 */
 function pieceRow(S, i) {
   const hw = (S.recHw || {})[i] !== 'no';
+  const dp = (S.recEdit && ((S.recDraft || {}).pieces || [])[i]) || {};
   return `<fieldset class="prow"><legend>${t('rec.pieceN', { n: i + 1 })}</legend>
     <div class="form">
-      <label class="f full">${t('rec.pTitle')}<input type="text" id="rp${i}-title" name="p${i}title" maxlength="120"></label>
-      <label class="f full">${t('rec.pSource')}<input type="text" id="rp${i}-src" name="p${i}src" maxlength="120"></label>
-      ${tempoInputs(`rp${i}-t`, `p${i}t`, t('rec.pTempo'), 'q')}
+      <label class="f full">${t('rec.pTitle')}<input type="text" id="rp${i}-title" name="p${i}title" value="${val(dp.title)}" maxlength="120"></label>
+      <label class="f full">${t('rec.pSource')}<input type="text" id="rp${i}-src" name="p${i}src" value="${val(dp.source)}" maxlength="120"></label>
+      ${tempoInputs(`rp${i}-t`, `p${i}t`, t('rec.pTempo'), (dp.tempo || {}).n || 'q', (dp.tempo || {}).b)}
       <label class="f">${t('rec.pHw')}<select id="rp${i}-hw" name="p${i}hw" data-change="rec-hw" data-i="${i}"><option value="yes" ${hw ? 'selected' : ''}>${t('rec.yes')}</option><option value="no" ${hw ? '' : 'selected'}>${t('rec.no')}</option></select></label>
-      ${hw ? `<label class="f">${t('rec.pSt')}<select id="rp${i}-st" name="p${i}st"><option value="new">${t('piece.new')}</option><option value="review">${t('piece.review')}</option></select></label>
-        ${tempoInputs(`rp${i}-h`, `p${i}h`, t('rec.hwTempo'), 'q')}
-        <label class="f check full"><input type="checkbox" id="rp${i}-vid" name="p${i}vid"> ${t('rec.video')}</label>` : `<p class="small muted full">${t('rec.pHwNo')}</p>`}
+      ${hw ? `<label class="f">${t('rec.pSt')}<select id="rp${i}-st" name="p${i}st"><option value="new" ${dp.st === 'review' ? '' : 'selected'}>${t('piece.new')}</option><option value="review" ${dp.st === 'review' ? 'selected' : ''}>${t('piece.review')}</option></select></label>
+        ${tempoInputs(`rp${i}-h`, `p${i}h`, t('rec.hwTempo'), (dp.hwTempo || {}).n || 'q', (dp.hwTempo || {}).b)}
+        <label class="f check full"><input type="checkbox" id="rp${i}-vid" name="p${i}vid" ${dp.video ? 'checked' : ''}> ${t('rec.video')}</label>` : `<p class="small muted full">${t('rec.pHwNo')}</p>`}
     </div></fieldset>`;
 }
 export function recordView(S) {
   const d = S.data, L = lg();
   const act = d.students.filter(s => s.active);
-  const pick = S.recSid && byId(act, S.recSid) ? S.recSid : (act[0] || {}).id;
-  const cur = byId(act, pick) || { dur: 30 };
+  const ed = S.recEdit ? d.lessons.find(l => l.id === S.recEdit) : null; // 正在修改哪一节课（没有就是新记一节）
+  const en = (ed && ed.notes) || {};
+  const pick = ed ? ed.sid : S.recSid && byId(act, S.recSid) ? S.recSid : (act[0] || {}).id;
+  const cur = byId(d.students, pick) || { dur: 30 };
   const recent = d.lessons.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
-  const f = nowFields(d.teacherTz);
+  const f = ed ? wallFields(Date.parse(ed.date), d.teacherTz) : nowFields(d.teacherTz);
+  const nf = ed && en.next ? wallFields(Date.parse(en.next), d.teacherTz) : f;
   const hintMs = fieldsToMs(f.date, f.h12, f.mi, f.ap, d.teacherTz);
+  const editBar = ed ? `<div class="edit-note" role="note"><span>${t('rec.editing', { name: (byId(d.students, ed.sid) || {}).name || '', n: ed.n, d: fmtDateZ(ed.date, d.teacherTz, L) })}</span><button class="btn sm" type="button" data-act="rec-edit-cancel">${t('rec.cancelEdit')}</button></div>` : '';
   return `<div class="stack"><div class="page-h"><h1>${t('rec.title')}</h1><span class="muted">${t('rec.sub')}</span></div>
   <div class="grid2">
-  <form class="card" data-form="rec-save"><div class="form">
-    <label class="f">${t('rec.student')}<select id="rec-student" name="sid" data-change="rec-student">${act.map(s => `<option value="${esc(s.id)}" ${s.id === pick ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>
-    <label class="f">${t('rec.dur')}<input type="number" id="rec-dur" name="dur" value="${esc(cur.dur)}" min="10" max="180" step="5"></label>
+  <form class="card" data-form="rec-save">${editBar}<div class="form">
+    ${ed ? `<div class="f"><span>${t('rec.student')}</span><b>${esc(cur.name || '')}</b><input type="hidden" name="sid" value="${esc(pick)}"></div>`
+      : `<label class="f">${t('rec.student')}<select id="rec-student" name="sid" data-change="rec-student">${act.map(s => `<option value="${esc(s.id)}" ${s.id === pick ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>`}
+    <label class="f">${t('rec.dur')}<input type="number" id="rec-dur" name="dur" value="${esc(ed ? ed.dur : cur.dur)}" min="10" max="180" step="5"></label>
     <div class="f full"><span>${t('rec.time')} <span class="muted small">· ${esc(tzAbbr(Date.now(), d.teacherTz))} ${esc(tzName(d.teacherTz, L))}</span></span>
       <div class="tp-row"><input type="date" id="rec-date" name="date" class="rec-tf" value="${esc(f.date)}" aria-label="${esc(tx('rec.date'))}">${timePick('t', f)}</div>
       <p class="small hint" id="rec-hint">${esc(tzHint(S, pick, hintMs))}</p></div>
     <label class="f">${t('rec.count')}<select id="rec-count" name="count" data-change="rec-count">${Array.from({ length: REC_MAX_PIECES }, (_, i) => `<option value="${i + 1}" ${i + 1 === (S.recN || 1) ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>
-    <label class="f">${t('rec.due')}<input type="date" id="rec-due" name="due"></label>
+    <label class="f">${t('rec.due')}<input type="date" id="rec-due" name="due" value="${esc(en.due || '')}"></label>
     <div class="full pieces-form">${Array.from({ length: S.recN || 1 }, (_, i) => pieceRow(S, i)).join('')}</div>
-    <label class="f full">${t('rec.focus')}<input type="text" id="rec-focus" name="focus" maxlength="300"></label>
-    <label class="f full">${t('rec.otherHw')}<textarea id="rec-hw" name="homework" style="min-height:72px" maxlength="800"></textarea><span class="small muted">${t('rec.hwHelp')}</span></label>
+    <label class="f full">${t('rec.focus')}<input type="text" id="rec-focus" name="focus" value="${val(en.focus)}" maxlength="300"></label>
+    <label class="f full">${t('rec.otherHw')}<textarea id="rec-hw" name="homework" style="min-height:72px" maxlength="800">${val(en.homework)}</textarea><span class="small muted">${t('rec.hwHelp')}</span></label>
     <div class="f full"><span>${t('rec.next')}</span>
-      <div class="tp-row"><input type="date" id="rec-ndate" name="ndate" class="rec-tf" aria-label="${esc(tx('rec.date'))}">${timePick('n', f)}
+      <div class="tp-row"><input type="date" id="rec-ndate" name="ndate" class="rec-tf" value="${esc(ed && en.next ? nf.date : '')}" aria-label="${esc(tx('rec.date'))}">${timePick('n', nf)}
         <button class="btn sm" type="button" data-act="rec-next7">${t('rec.next7')}</button><button class="btn sm link" type="button" data-act="rec-next-clear">${t('rec.nextClear')}</button></div>
       <p class="small hint" id="rec-nhint"></p><span class="small muted">${t('rec.nextHelp')}</span></div>
-  </div><div class="btns"><button class="btn primary" type="submit" ${S.busy ? 'disabled' : ''}>${t('rec.save')}</button></div>
-  <p class="small muted">${t('rec.langNote')}</p></form>
+  </div><div class="btns"><button class="btn primary" type="submit" ${S.busy ? 'disabled' : ''}>${t(ed ? 'rec.saveEdit' : 'rec.save')}</button>${ed ? `<button class="btn" type="button" data-act="rec-edit-cancel">${t('rec.cancelEdit')}</button>` : ''}</div>
+  <p class="small muted">${t(ed ? 'rec.editNote' : 'rec.langNote')}</p></form>
   <section class="card"><h3>${t('rec.afterTitle')}</h3><div class="steps">
     <div class="step"><div><b>${t('rec.s1')}</b><span class="small muted">${t('rec.s1b')}</span></div></div>
     <div class="step"><div><b>${t('rec.s2')}</b><span class="small muted">${t('rec.s2b', { n: d.rules.sign })}</span></div></div>

@@ -18,7 +18,7 @@ function actions_() {
     'auth.kid':     { fn: authKid_, write: true },
     'auth.logout':  { fn: authLogout_, write: true, roles: ALL_ROLES },
 
-    'bootstrap':    { fn: function () { return {}; }, roles: ALL_ROLES, state: true },
+    'bootstrap':    { fn: function (ctx) { touchSeen_(ctx); return {}; }, roles: ALL_ROLES, state: true },
     'profile.save': { fn: hProfileSave_, write: true, state: true, roles: ALL_ROLES },
     'homework.check': { fn: hHomeworkCheck_, write: true, state: true, roles: ['parent', 'student'] },
     'preview.state':  { fn: hPreviewState_, roles: ['admin'] },
@@ -46,6 +46,7 @@ function actions_() {
     'kidcode.clear':    { fn: hKidCodeClear_, write: true, state: true, roles: ['admin'] },
     'books.save':       { fn: hBooksSave_, write: true, state: true, roles: ['admin'] },
     'lessons.log':      { fn: hLessonLog_, write: true, state: true, roles: ['admin'] },
+    'lessons.edit':     { fn: hLessonEdit_, write: true, state: true, roles: ['admin'] },
     'lessons.delete':   { fn: hLessonDelete_, write: true, state: true, roles: ['admin'] },
     'tuition.paid':     { fn: hTuitionPaid_, write: true, state: true, roles: ['admin'] },
     'tuition.remind':   { fn: hTuitionRemind_, write: true, state: true, roles: ['admin'] },

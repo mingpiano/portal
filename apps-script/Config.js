@@ -6,9 +6,9 @@
  * 以下划线结尾的函数是内部函数，网页只能通过 doPost 里登记的 action 调用。
  */
 
-var SCHEMA_VERSION = 4;
+var SCHEMA_VERSION = 5;
 /** 后台程序版本：网页发现后台比自己旧（忘了发布新版本），会提醒老师。每批功能 +1。 */
-var API_VERSION = 3;
+var API_VERSION = 4;
 
 /* ---------- 登录相关限制 ---------- */
 var CODE_TTL_MS = 10 * 60 * 1000;          // 验证码 10 分钟有效
@@ -25,7 +25,8 @@ var SESSION_SHORT_MS = 24 * 3600 * 1000;
 var MAX_SESSIONS_PER_ACCOUNT = 10;
 var MAIL_QUOTA_FLOOR = 10;                 // Gmail 剩余额度低于这个数就不再发邮件，留给老师自己的重要邮件
 var AUTO_SIGN_MS = 48 * 3600 * 1000;       // 课后 48 小时没签字就自动确认（不加分）
-var MSG_MAIL_THROTTLE_MS = 60 * 60 * 1000; // 同一个学生的留言，一小时内最多提醒老师一次
+var MSG_MAIL_THROTTLE_MS = 10 * 60 * 1000; // 同一个学生的留言，10 分钟内最多提醒老师一次（连发几条只发一封）
+var SEEN_TOUCH_MS = 30 * 60 * 1000;        // “最近登录”最多每 30 分钟更新一次
 
 /* ---------- 文字长度上限 ---------- */
 var LIMITS = { name: 80, email: 120, level: 80, grp: 40, title: 200, body: 4000, text: 2000,
@@ -42,8 +43,8 @@ var SHEETS_ = {
   Admins:   ['email', 'name', 'avatar:j', 'active:b'],
   Students: ['id', 'name', 'email', 'kind', 'birth:d', 'start:d', 'adj:i', 'lang', 'level', 'grp', 'dur:i',
              'paid:i', 'carry:i', 'claimed:b', 'showPoints:b', 'avatar:j', 'books:j', 'active:b', 'created', 'tz',
-             'codeHash', 'codeVer:i', 'codeFails:i', 'codeLock:i'],
-  Parents:  ['id', 'name', 'email', 'lang', 'avatar:j', 'active:b', 'created'],
+             'codeHash', 'codeVer:i', 'codeFails:i', 'codeLock:i', 'lastSeen'],
+  Parents:  ['id', 'name', 'email', 'lang', 'avatar:j', 'active:b', 'created', 'lastSeen'],
   Pairs:    ['parentId', 'studentId'],
   Lessons:  ['id', 'sid', 'date', 'dur:i', 'status', 'confirmedAt', 'signedAt', 'signedBy', 'loggedAt', 'notes:j', 'hwDone:j'],
   Notices:  ['id', 'ts', 'scope', 'sid', 'aud', 'title', 'body', 'readBy:j'],

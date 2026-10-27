@@ -55,6 +55,15 @@ function hProfileSave_(ctx, p) {
     if (ctx.role !== 'admin') fail_('forbidden'); // 只有老师能改“老师所在时区”
     setConfig_('teacher_tz', oneOf_(p.tz, TZ_LIST, 'tz'));
   }
+  if (p.birth !== undefined) { // 生日：学生自己填；孩子的，家长也可以填
+    var target;
+    if (ctx.role === 'student') target = findStudent_(ctx.id);
+    else if (ctx.role === 'parent') { target = accessStudent_(ctx, p.sid); if (target.kind !== 'child') fail_('forbidden'); }
+    else fail_('forbidden');
+    var b = dateOnly_(p.birth, 'birth');
+    if (b && Date.parse(b) > now_()) fail_('bad_request', 'birth');
+    dbUpdate_('Students', target, { birth: b });
+  }
   if (p.avatar !== undefined) {
     var avatar = cleanAvatar_(p.avatar);
     var row;
@@ -197,8 +206,13 @@ function cleanBooks_(list) {
     if (!b || typeof b !== 'object') fail_('bad_request', 'book');
     var out = { n: str_(b.n, LIMITS.book, { required: true, label: 'book' }), s: oneOf_(b.s, ['current', 'done'], 'book status') };
     if (b.k !== undefined && b.k !== '' && b.k !== 'book') {
-      out.k = oneOf_(b.k, ['single'], 'book kind');
-      var f = str_(b.f, LIMITS.book); if (f) out.f = f;
+      out.k = oneOf_(b.k, ['single', 'portfolio'], 'book kind');
+      if (out.k === 'single') { var f = str_(b.f, LIMITS.book); if (f) out.f = f; }
+      else { // 作品集：名字 + YouTube（或别的 https）链接
+        var u = String(b.u == null ? '' : b.u).trim();
+        if (u.length > 500 || !/^https:\/\/[^\s<>"']+$/i.test(u)) fail_('bad_url');
+        out.u = u;
+      }
     }
     return out;
   });
@@ -230,9 +244,8 @@ function cleanTempo_(v) {
   return { n: oneOf_(String(v.n || 'q'), TEMPO_NOTES, 'tempo note'), b: int_(v.b, 20, 400, 'bpm') };
 }
 
-function hLessonLog_(ctx, p) {
-  var s = findStudent_(String(p.sid || ''));
-  if (!s || !s.active) fail_('not_found');
+/** 记课 / 改课共用的检查：日期、时长、曲子、作业、下次上课。返回整理好的内容。 */
+function parseLesson_(s, p) {
   var dateMs = Date.parse(p.date);
   var now = now_();
   if (!isFinite(dateMs) || dateMs > now + 86400000 || dateMs < now - 3 * 365 * 86400000) fail_('bad_request', 'date');
@@ -250,23 +263,48 @@ function hLessonLog_(ctx, p) {
   var notes = { pieces: pieces, focus: str_(p.focus, LIMITS.focus), tempo: str_(p.tempo, LIMITS.tempo),
     homework: homework, due: dateOnly_(p.due, 'due') };
   if (nextMs) notes.next = iso_(nextMs);
-  var dup = dbAll_('Lessons').some(function (l) { return l.sid === s.id && Math.abs(ms_(l.date) - dateMs) < 60000; });
+  return { dateMs: dateMs, dur: dur, notes: notes, nextMs: nextMs };
+}
+
+function hLessonLog_(ctx, p) {
+  var s = findStudent_(String(p.sid || ''));
+  if (!s || !s.active) fail_('not_found');
+  var x = parseLesson_(s, p), now = now_();
+  var dup = dbAll_('Lessons').some(function (l) { return l.sid === s.id && Math.abs(ms_(l.date) - x.dateMs) < 60000; });
   if (dup) fail_('duplicate');
 
   var id = newId_('l');
-  dbInsert_('Lessons', { id: id, sid: s.id, date: iso_(dateMs), dur: dur, status: 'done', confirmedAt: '', signedAt: '',
-    signedBy: '', loggedAt: iso_(now), notes: notes, hwDone: [] });
+  dbInsert_('Lessons', { id: id, sid: s.id, date: iso_(x.dateMs), dur: x.dur, status: 'done', confirmedAt: '', signedAt: '',
+    signedBy: '', loggedAt: iso_(now), notes: x.notes, hwDone: [] });
 
   if (getConfigMap_()['mail.lessonSign'] === 'true') {
     // 邮件里的时间按学生所在时区写，学生看到的和自己的钟一致
     var tz = studentTz_(s);
-    var dateText = Utilities.formatDate(new Date(dateMs), tz, 'yyyy-MM-dd');
-    var nextText = nextMs ? fmtTz_(nextMs, tz) : '';
+    var dateText = Utilities.formatDate(new Date(x.dateMs), tz, 'yyyy-MM-dd');
+    var nextText = x.nextMs ? fmtTz_(x.nextMs, tz) : '';
     var parents = pairedParents_(s.id);
     if (parents.length) parents.forEach(function (pr) { sendMail_(pr.email, mailLessonSign_(s.name, dateText, pr.lang, nextText), 'lesson'); });
     else if (s.email) sendMail_(s.email, mailLessonSign_(s.name, dateText, s.lang, nextText), 'lesson');
   }
   return { id: id };
+}
+
+/**
+ * 修改一节已记的课：学生不能换，签字状态和记课时间不变（不重发邮件）。
+ * 学生已经勾过的作业：只保留“这一项内容没变”的勾，改动过的项目要重新勾。
+ */
+function hLessonEdit_(ctx, p) {
+  var l = dbAll_('Lessons').filter(function (x) { return x.id === String(p.id || ''); })[0];
+  if (!l) fail_('not_found');
+  var s = findStudent_(l.sid);
+  if (!s) fail_('not_found');
+  var x = parseLesson_(s, p);
+  var dup = dbAll_('Lessons').some(function (o) { return o.id !== l.id && o.sid === s.id && Math.abs(ms_(o.date) - x.dateMs) < 60000; });
+  if (dup) fail_('duplicate');
+  var oldItems = hwList_(l.notes), newItems = hwList_(x.notes);
+  var done = (l.hwDone || []).filter(function (i) { return oldItems[i] && newItems[i] && JSON.stringify(oldItems[i]) === JSON.stringify(newItems[i]); });
+  dbUpdate_('Lessons', l, { date: iso_(x.dateMs), dur: x.dur, notes: x.notes, hwDone: done });
+  return { id: l.id };
 }
 
 function hLessonDelete_(ctx, p) {

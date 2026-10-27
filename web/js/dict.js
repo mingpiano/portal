@@ -504,7 +504,24 @@ const ROWS = [
   ['av.use', '使用这张照片', 'Use this photo'],
   ['av.another', '换一张', 'Choose another'],
   ['av.notImage', '这个文件无法作为图片打开。请换一张 JPG 或 PNG 照片。', 'That file cannot be opened as a picture. Please choose a JPG or PNG photo.'],
-  ['av.tooBig', '图片文件太大了（超过 15 MB），请换一张小一点的。', 'That picture is too large (over 15 MB). Please choose a smaller one.']
+  ['av.tooBig', '图片文件太大了（超过 15 MB），请换一张小一点的。', 'That picture is too large (over 15 MB). Please choose a smaller one.'],
+  /* 第 2 版 · 批次四 */
+  ['pf.birth', '我的生日', 'My birthday'],
+  ['pf.birthOf', '{name} 的生日', "{name}'s birthday"],
+  ['pf.birthHelp', '只用来显示年龄；老师和家人看得到。', 'Used only to show age; visible to the teacher and family.'],
+  ['seen.never', '最近登录：还没登录过', 'Last seen: never signed in'],
+  ['seen.at', '最近登录：{when}（{ago}）', 'Last seen: {when} ({ago})'],
+  ['seen.today', '今天', 'today'],
+  ['seen.days', '{n} 天前', '{n} days ago'],
+  ['bk.portfolio', '作品集', 'Portfolio'],
+  ['bk.phPort', '作品集名称，例如 2026 秋季作品集', 'Portfolio title, e.g. Fall 2026 Portfolio'],
+  ['bk.phUrl', 'YouTube 链接（以 https:// 开头）', 'YouTube link (starts with https://)'],
+  ['bk.url', '链接', 'Link'],
+  ['rec.editing', '正在修改：{name} 的第 {n} 节课（{d}）', 'Editing: lesson {n} for {name} ({d})'],
+  ['rec.cancelEdit', '取消修改', 'Cancel editing'],
+  ['rec.saveEdit', '保存修改', 'Save changes'],
+  ['rec.savedEdit', '已修改。', 'Changes saved.'],
+  ['rec.editNote', '修改不会重发邮件，也不影响已有的签字；学生已勾选的作业，内容没改的项目会保留勾选。', 'Editing does not resend emails or change the sign-off; homework items that did not change keep their check marks.'],
 ];
 
 export const DICT = { zh: {}, en: {} };

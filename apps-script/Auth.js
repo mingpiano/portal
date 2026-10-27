@@ -147,7 +147,33 @@ function issueSession_(email, acct, remember, data) {
     hash: hashToken_(token), kind: 'session', email: email, role: acct.role, subject: acct.id,
     created: iso_(now), expires: iso_(expires), data: data || null
   });
+  markSeen_(acct.role, acct.id, now);
   return { token: token, role: acct.role, id: acct.id, expiresAt: iso_(expires) };
+}
+
+/** 记下“最近登录”（老师不记）。只写学生 / 家长自己那一行。 */
+function markSeen_(role, id, now) {
+  try {
+    var row = role === 'parent' ? dbAll_('Parents').filter(function (x) { return x.id === id; })[0]
+      : role === 'student' ? findStudent_(id) : null;
+    if (row) dbUpdate_(role === 'parent' ? 'Parents' : 'Students', row, { lastSeen: iso_(now) });
+  } catch (e) { /* 记不上不影响登录 */ }
+}
+
+/**
+ * 记住设备的人 90 天内不用重新登录，所以每次打开网页（bootstrap）也算一次“来过”。
+ * bootstrap 本来不加锁；这里只在距离上次记录超过 30 分钟时，才短暂拿锁写一次，拿不到就算了。
+ */
+function touchSeen_(ctx) {
+  if (!ctx || ctx.role === 'admin') return;
+  try {
+    var row = ctx.role === 'parent' ? dbAll_('Parents').filter(function (x) { return x.id === ctx.id; })[0] : findStudent_(ctx.id);
+    var now = now_();
+    if (!row || (row.lastSeen && now - ms_(row.lastSeen) < SEEN_TOUCH_MS)) return;
+    var lock = LockService.getScriptLock();
+    if (!lock.tryLock(3000)) return;
+    try { resetRequest_(); markSeen_(ctx.role, ctx.id, now); resetRequest_(); } finally { lock.releaseLock(); }
+  } catch (e) { /* 不影响打开网页 */ }
 }
 
 /** 令牌 → 当前身份。令牌无效、过期、或账户已归档都算未登录。 */

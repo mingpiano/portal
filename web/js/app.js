@@ -17,7 +17,7 @@ const S = {
   screen: 'boot',              // boot | offline | login | app
   token: null, data: null, tab: null, kid: null, msgSel: null, recSid: null,
   showArchived: false, modal: null, avDraft: null, busy: false, lastSync: 0,
-  upload: null, upName: '', upSize: 0, resKind: 'file', dl: null, viewer: null, recN: 1, recHw: {}, preview: null, adminData: null, adminLang: null, crop: null,
+  upload: null, upName: '', upSize: 0, resKind: 'file', dl: null, viewer: null, recN: 1, recHw: {}, recEdit: null, recDraft: null, preview: null, adminData: null, adminLang: null, crop: null,
   fresh: { n: new Set(), m: new Set(), r: new Set() }, readTried: new Set(),
   login: { step: 'email', email: '', ticket: null, accounts: [], err: '', busy: false, remember: true, cooldown: 0 }
 };
@@ -36,7 +36,7 @@ function snapshot(skipBooks) {
   const snap = { vals: {}, focus: null };
   document.querySelectorAll('#app input, #app textarea, #app select, #modal-root input, #modal-root textarea, #modal-root select').forEach(el => {
     const k = formKey(el); if (!k || el.type === 'hidden' || el.type === 'file') return;
-    if (skipBooks && /\/bk\d+[nfks]$|^#bk\d+-[nf]$/.test(k)) return; // 教材行增删后，序号变了，用刚整理好的数据，不要用旧快照
+    if (skipBooks && /\/bk\d+[nfksu]$|^#bk\d+-[nfu]$/.test(k)) return; // 教材行增删后，序号变了，用刚整理好的数据，不要用旧快照
     snap.vals[k] = el.type === 'checkbox' ? { c: el.checked } : { v: el.value };
   });
   const a = document.activeElement;
@@ -148,7 +148,7 @@ function autoRead() {
 function sessionEnded(msgKey) {
   closeViewer(); upFile = null;
   store.set(KEY.token, null); store.set(KEY.token, null, true);
-  Object.assign(S, { upload: null, dl: null, upName: '', upSize: 0, recN: 1, recHw: {}, preview: null, adminData: null, crop: null, token: null, data: null, modal: null, screen: 'login', tab: null, kid: null });
+  Object.assign(S, { upload: null, dl: null, upName: '', upSize: 0, recN: 1, recHw: {}, recEdit: null, recDraft: null, preview: null, adminData: null, crop: null, token: null, data: null, modal: null, screen: 'login', tab: null, kid: null });
   Object.assign(S.login, { step: 'email', err: msgKey || '', busy: false, ticket: null, accounts: [] });
   render({ keep: false });
 }
@@ -266,13 +266,16 @@ function readBookRows(root) {
   const out = [];
   for (let i = 0; root.querySelector(`[name="bk${i}n"]`); i++) {
     const g = k => { const el = root.querySelector(`[name="bk${i}${k}"]`); return el ? String(el.value).trim() : ''; };
-    const k = g('k') === 'single' ? 'single' : 'book', row = { n: g('n'), s: g('s') === 'done' ? 'done' : 'current' };
+    const kk = g('k'), k = kk === 'single' || kk === 'portfolio' ? kk : 'book', row = { n: g('n'), s: g('s') === 'done' ? 'done' : 'current' };
     if (k === 'single') { row.k = 'single'; if (g('f')) row.f = g('f'); }
+    if (k === 'portfolio') { row.k = 'portfolio'; row.u = g('u'); }
     out.push(row);
   }
   return out;
 }
-const bookDraft = () => { const f = $('#modal-root form[data-form="student-save"]'); return f ? readBookRows(f).map((r, i) => ({ ...r, k: ((f.querySelector(`[name="bk${i}k"]`) || {}).value === 'single') ? 'single' : 'book' })) : []; };
+/** 退出“修改课记录”，回到新记一节课的空白表单。 */
+function recReset() { S.recEdit = null; S.recDraft = null; S.recN = 1; S.recHw = {}; }
+const bookDraft = () => { const f = $('#modal-root form[data-form="student-save"]'); return f ? readBookRows(f).map(r => ({ ...r, k: r.k || 'book' })) : []; };
 
 /* ---------- 资源库：上传、下载、在线播放 ---------- */
 const RES_MAX = 25 * 1024 * 1024, RES_PART = 1000000;
@@ -401,8 +404,15 @@ const FORMS = {
       next = new Date(nms).toISOString();
     }
     const sid = fd.get('sid'); S.recSid = sid;
-    const r = await run('lessons.log', { sid, date: new Date(ms).toISOString(), dur: num(fd.get('dur')), pieces, focus: fd.get('focus'), homework: fd.get('homework'), due: fd.get('due') || '', next }, { fresh: true });
-    if (r.ok) { S.recN = 1; S.recHw = {}; render({ keep: false }); toast(tx('rec.saved')); }
+    const body = { date: new Date(ms).toISOString(), dur: num(fd.get('dur')), pieces, focus: fd.get('focus'), homework: fd.get('homework'), due: fd.get('due') || '', next };
+    const r = S.recEdit ? await run('lessons.edit', { id: S.recEdit, ...body }, { fresh: true }) : await run('lessons.log', { sid, ...body }, { fresh: true });
+    if (r.ok) { const was = S.recEdit; recReset(); render({ keep: false }); toast(tx(was ? 'rec.savedEdit' : 'rec.saved')); if (was) window.scrollTo(0, 0); }
+  },
+  async 'profile-birth'(f, fd) {
+    const body = { birth: String(fd.get('birth') || '') };
+    if (S.data.me.role === 'parent') body.sid = f.dataset.id;
+    const r = await run('profile.save', body, { fresh: true });
+    if (r.ok) { render({ keep: false }); toast(tx('common.saved')); }
   },
   async 'student-save'(f, fd) {
     const student = { name: fd.get('name'), email: fd.get('email'), kind: fd.get('kind'), lang: fd.get('lang'), birth: fd.get('birth') || '', start: fd.get('start') || '',
@@ -410,6 +420,7 @@ const FORMS = {
     if (f.dataset.id) student.id = f.dataset.id;
     student.books = readBookRows(f);
     if (student.books.some(b => !b.n)) return toast(tx('err.book_name'));
+    if (student.books.some(b => b.k === 'portfolio' && !/^https:\/\/\S+$/i.test(b.u || ''))) return toast(tx('err.bad_url'));
     const r = await run('students.save', { student }, { fresh: true });
     if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); }
   },
@@ -507,6 +518,15 @@ const ACT = {
       run: async () => { const r = await run('tuition.paid', { sid: s.id, expectPaid: s.paid }, { fresh: true }); if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); } else { S.modal = null; render({ keep: false }); } } };
     render({ keep: false });
   },
+  'lesson-edit'(d) {
+    const l = S.data.lessons.find(x => x.id === d.id); if (!l) return;
+    const ps = (l.notes && l.notes.pieces) || [];
+    S.recEdit = l.id; S.recDraft = { pieces: ps }; S.recSid = l.sid;
+    S.recN = Math.min(V.REC_MAX_PIECES, Math.max(1, ps.length));
+    S.recHw = {}; ps.forEach((p, i) => { S.recHw[i] = (p.hw === undefined ? p.st !== 'done' : p.hw) ? 'yes' : 'no'; });
+    S.tab = 'record'; render({ keep: false }); window.scrollTo(0, 0);
+  },
+  'rec-edit-cancel'() { recReset(); render({ keep: false }); },
   'lesson-del'(d) {
     S.modal = { type: 'confirm', title: 'cf.delTitle', body: 'cf.delBody', vars: {}, yes: 'common.delete',
       run: async () => { const r = await run('lessons.delete', { id: d.id }, { fresh: true }); S.modal = null; render({ keep: false }); if (r.ok) toast(tx('common.saved')); } };

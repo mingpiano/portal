@@ -431,3 +431,7 @@ h1.bn-1{font-size:1.6rem}
 
 .ver-note{background:#fdecea;border-bottom:2px solid #c0392b;color:#7a1f14;font-size:.9rem}
 .ver-note .wrap{padding-block:10px}
+
+.edit-note{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:.9rem}
+.pbook .tick{color:var(--ok,#2f7d4f);font-weight:700}
+.pbook a{color:inherit;text-decoration:underline;text-underline-offset:2px}

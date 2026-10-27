@@ -51,6 +51,7 @@ function buildState_(ctx) {
       id: s.id, name: s.name, email: s.email, kind: s.kind, birth: s.birth, start: s.start, adj: s.adj, lang: s.lang,
       level: s.level, grp: s.grp, dur: s.dur, showPoints: s.showPoints, avatar: s.avatar, books: s.books || [],
       active: s.active, claimed: s.claimed, hasParent: kidParents.length > 0,
+      lastSeen: admin ? s.lastSeen || '' : undefined,
       done: doneList.length, total: doneList.length + s.adj, hours: Math.round(mins / 6) / 10,
       tuition: tuition_(s, doneList.length), learning: learning_(ls),
       tz: studentTz_(s), next: nextLesson_(ls, now)
@@ -82,13 +83,13 @@ function buildState_(ctx) {
     me = { role: 'parent', id: pr.id, name: pr.name, email: pr.email, lang: pr.lang, avatar: pr.avatar, kids: ids };
   } else {
     var st = byId[ctx.id];
-    me = { role: 'student', id: st.id, name: st.name, email: st.email, lang: st.lang, avatar: st.avatar };
+    me = { role: 'student', id: st.id, name: st.name, email: st.email, lang: st.lang, avatar: st.avatar, birth: st.birth, kind: st.kind };
   }
 
   var parentsOut = [];
   if (admin) {
     parentsOut = parents.map(function (p) {
-      return { id: p.id, name: p.name, email: p.email, lang: p.lang, avatar: p.avatar, active: p.active,
+      return { id: p.id, name: p.name, email: p.email, lang: p.lang, avatar: p.avatar, active: p.active, lastSeen: p.lastSeen || '',
         kids: pairs.filter(function (x) { return x.parentId === p.id; }).map(function (x) { return x.studentId; }) };
     });
   } else if (ctx.role === 'parent') {
