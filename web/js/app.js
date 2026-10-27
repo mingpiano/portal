@@ -449,6 +449,7 @@ const FORMS = {
     const student = { name: fd.get('name'), email: fd.get('email'), kind: fd.get('kind'), lang: fd.get('lang'), birth: fd.get('birth') || '', start: fd.get('start') || '',
       tz: fd.get('tz') || undefined, level: fd.get('level'), grp: fd.get('grp'), dur: num(fd.get('dur')), paid: num(fd.get('paid')), carry: fd.has('carry') ? num(fd.get('carry')) : ((stuById(f.dataset.id) || {}).carry || 0), adj: num(fd.get('adj')), showPoints: !!fd.get('showPoints'),
       billing: fd.get('billing') || 'lessons', billFrom: fd.get('billFrom') || '' };
+    if (fd.has('mPlan')) { student.mPlan = fd.get('mPlan'); student.mDone = fd.get('mDone'); }
     if (fd.has('term')) student.term = num(fd.get('term'));
     if (f.dataset.id) student.id = f.dataset.id;
     student.books = readBookRows(f);
@@ -547,6 +548,10 @@ const ACT = {
   remind(d) { S.modal = { type: 'remind', id: d.id }; render({ keep: false }); focusFirst('#modal-root'); },
   paid(d) {
     const s = stuById(d.id);
+    if (s.tuition.plan) { // 按月且设了节数：收到款后在编辑页填新一轮“本月交了几节”
+      S.modal = { type: 'student', id: s.id, books: (s.books || []).map(b => ({ k: b.k === 'single' ? 'single' : 'book', n: b.n, f: b.f || '', s: b.s })) };
+      render({ keep: false }); toast(tx('cf.paidPlanHint')); return;
+    }
     S.modal = { type: 'confirm', title: 'cf.paidTitle', body: s.tuition.mode === 'month' ? 'cf.paidBodyMonth' : 'cf.paidBody', vars: { name: s.name, t: s.tuition.n }, yes: 'ov.paid',
       run: async () => { const r = await run('tuition.paid', { sid: s.id, expectPaid: s.paid }, { fresh: true }); if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); } else { S.modal = null; render({ keep: false }); } } };
     render({ keep: false });

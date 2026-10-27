@@ -27,7 +27,9 @@ export function keyboard(used, label, n = 10) {
     return `<div class="kbar" role="img" aria-label="${esc(label)}"><div class="kbar-fill" style="width:${Math.round(used / n * 100)}%"></div><span class="kbar-t num">${used} / ${n}</span></div>`;
   }
   const W = 24, H = 80;
-  let s = `<svg class="kb" viewBox="0 0 ${W * n + 2} ${H + 2}" role="img" aria-label="${esc(label)}">`;
+  // 不足 10 个琴键时，每个键和 10 键的样子一样大（整条按比例变短），不会被拉成大胖键
+  const wpx = n < 10 ? Math.round(300 * (W * n + 2) / (W * 10 + 2)) : 300;
+  let s = `<svg class="kb" style="max-width:${wpx}px" viewBox="0 0 ${W * n + 2} ${H + 2}" role="img" aria-label="${esc(label)}">`;
   for (let i = 0; i < n; i++) s += `<rect x="${1 + i * W}" y="1" width="${W}" height="${H}" rx="3" class="wk${i < used ? ' on' : ''}"/>`;
   for (let i = 0; i < n - 1; i++) if ([0, 1, 3, 4, 5].includes(i % 7)) s += `<rect x="${1 + (i + 1) * W - 7}" y="1" width="14" height="${H * .58}" rx="2" class="bk"/>`;
   for (let i = 0; i < n; i++) s += `<text x="${1 + i * W + W / 2}" y="${H - 8}" class="kn num${i < used ? ' on' : ''}">${i + 1}</text>`;

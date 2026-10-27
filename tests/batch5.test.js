@@ -266,3 +266,52 @@ describe('日历和记课互相关联', () => {
     assert.equal(evs(rt).length, before);
   });
 });
+
+describe('按月：本月交了几节 + 本月已上手动修正', () => {
+  const cur = rt => rt.ctx.ymKey_(rt.now(), rt.ctx.teacherTz_());
+  test('交了 3 节、已上 2 节 → 2/3；上完变该交费（4/4 同理）', () => {
+    const rt = fresh();
+    ok(save(rt, 's-emma', { billing: 'month', billFrom: cur(rt), paid: 0, mPlan: 3, mDone: 2 }));
+    let t = stu(state(rt, 'admin'), 's-emma').tuition;
+    assert.equal(t.plan, 3); assert.equal(t.used, 2); assert.equal(t.left, 1); assert.equal(t.due, false);
+    // 学生、家长看到的一样
+    const mine = stu(state(rt, 'emma'), 's-emma').tuition; assert.equal(mine.used, 2); assert.equal(mine.plan, 3);
+    // 再记一节课（系统自动 +1）→ 3/3，该续费
+    ok(rt.call('lessons.log', lessonParams(rt, 's-emma'), admin(rt)));
+    t = stu(state(rt, 'admin'), 's-emma').tuition; assert.equal(t.used, 3); assert.equal(t.due, true);
+    ok(save(rt, 's-emma', { billing: 'month', mPlan: 4, mDone: 4 }));
+    t = stu(state(rt, 'admin'), 's-emma').tuition; assert.equal(t.used, 4); assert.equal(t.plan, 4); assert.equal(t.due, true);
+  });
+  test('已上留空 = 按记课自动算；手动修正只存差值，改别的字段再保存不会变', () => {
+    const rt = fresh();
+    ok(save(rt, 's-lucas', { billing: 'month', billFrom: cur(rt), mPlan: 5, mDone: '' }));
+    const auto = stu(state(rt, 'admin'), 's-lucas').tuition.auto;
+    assert.equal(stu(state(rt, 'admin'), 's-lucas').tuition.used, auto);
+    ok(save(rt, 's-lucas', { billing: 'month', mPlan: 5, mDone: auto + 2 }));
+    let s = stu(state(rt, 'admin'), 's-lucas'); assert.equal(s.tuition.used, auto + 2); assert.equal(s.mDone, auto + 2); assert.equal(s.mPlan, 5);
+    ok(save(rt, 's-lucas', { billing: 'month', mPlan: 5, mDone: s.mDone, level: '改了别的' })); // 表单把现在的值原样送回
+    assert.equal(stu(state(rt, 'admin'), 's-lucas').tuition.used, auto + 2);
+  });
+  test('范围检查；每 N 节一期的学生不受影响；不设节数 = 老的按月逻辑', () => {
+    const rt = fresh();
+    for (const v of [-1, 32, 'x', 1.5]) err(save(rt, 's-emma', { billing: 'month', mPlan: v }), 'bad_request');
+    err(save(rt, 's-emma', { billing: 'month', mPlan: 3, mDone: -2 }), 'bad_request');
+    ok(save(rt, 's-emma', { billing: 'lessons', mPlan: 3, mDone: 1 }));
+    const e = stu(state(rt, 'admin'), 's-emma'); assert.equal(e.tuition.mode, 'lessons'); assert.ok(!e.mPlan);
+    ok(save(rt, 's-emma', { billing: 'month', billFrom: cur(rt), paid: 1 }));
+    const t = stu(state(rt, 'admin'), 's-emma').tuition; assert.equal(t.plan, 0); assert.equal(t.due, false);
+  });
+  test('到了下个月，上个月的“交了几节”自动失效，回到按月未交', () => {
+    const rt = fresh(), tk = rt.login(OWNER, { remember: true });
+    ok(save(rt, 's-emma', { billing: 'month', billFrom: cur(rt), paid: 0, mPlan: 3, mDone: 1 }));
+    const m0 = cur(rt);
+    for (let i = 0; i < 40 && cur(rt) === m0; i++) rt.advance(DAY);
+    const t = ok(rt.call('bootstrap', {}, tk)).state.students.find(x => x.id === 's-emma').tuition; assert.equal(t.plan, 0); assert.equal(t.due, true);
+  });
+  test('该交费的提醒邮件：写“本月 N 节已上完”', () => {
+    const rt = fresh();
+    ok(save(rt, 's-emma', { billing: 'month', billFrom: cur(rt), paid: 1, mPlan: 2, mDone: 2 }));
+    ok(rt.call('tuition.remind', { sid: 's-emma', note: '' }, admin(rt)));
+    assert.match(rt.mail[rt.mail.length - 1].body, /2 节|2 paid lessons/);
+  });
+});

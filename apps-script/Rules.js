@@ -26,7 +26,13 @@ function tuition_(student, doneCount, doneMs, nowMs, tz) {
     var from = /^\d{4}-\d{2}$/.test(student.billFrom || '') ? student.billFrom : cur;
     var elapsed = Math.max(0, ymIndex_(cur) - ymIndex_(from) + 1);
     var inMonth = (doneMs || []).filter(function (m) { return ymKey_(m, tz) === cur; }).length;
-    return { mode: 'month', n: 0, done: doneCount, consumed: inMonth, left: paid - elapsed, used: inMonth, due: paid < elapsed, month: cur, owed: Math.max(0, elapsed - paid) };
+    // 老师给这个月设了“交了几节课的学费”：显示 已上 / 交费节数（已上可手动修正），上完就该再交
+    var plan = student.mPlan > 0 && student.mMonth === cur ? student.mPlan : 0;
+    if (plan) {
+      var eff = Math.max(0, inMonth + (student.mAdj || 0));
+      return { mode: 'month', n: 0, plan: plan, done: doneCount, consumed: eff, left: plan - eff, used: eff, due: eff >= plan, month: cur, owed: 0, auto: inMonth, adj: student.mAdj || 0 };
+    }
+    return { mode: 'month', n: 0, plan: 0, done: doneCount, consumed: inMonth, left: paid - elapsed, used: inMonth, due: paid < elapsed, month: cur, owed: Math.max(0, elapsed - paid), auto: inMonth, adj: 0 };
   }
   var N = student.term > 0 ? student.term : 10, carry = student.carry || 0;
   var consumed = carry + doneCount;

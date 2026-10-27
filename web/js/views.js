@@ -114,7 +114,7 @@ export function shell(S, body) {
     ? `<div class="who">${nameLine}${avatar(me, 32)}<button class="btn sm primary" data-act="preview-exit">${t('prev.exit')}</button></div>`
     : `<div class="who">${nameLine}<button class="avbtn" data-act="av-open" aria-label="${esc(tx('av.change'))}">${avatar(me, 32)}</button>${langBtn()}<button class="btn sm" data-act="logout">${t('app.logout')}</button></div>`;
   const pv = S.preview ? `<div class="prev-note" role="note"><div class="wrap">${t('prev.banner', { name: me.name })} <button class="btn sm" data-act="preview-exit">${t('prev.exit')}</button></div></div>` : '';
-  const WANT_API = 5; // 要和 apps-script/Config.js 的 API_VERSION 一致
+  const WANT_API = 6; // 要和 apps-script/Config.js 的 API_VERSION 一致
   const old = me.role === 'admin' && !S.preview && (S.data.apiVer || 0) < WANT_API ? `<div class="ver-note" role="alert"><div class="wrap">${t('ver.old')}</div></div>` : '';
   return `${old}${pv}<header class="bar"><div class="wrap">
       <div class="brand">${logoImg(34)}${brandText('b')}</div>
@@ -196,13 +196,18 @@ function tuitionCard(S, s) {
     if (payer) msg = `<div class="pay"><div class="grow"><b>${t('tu.dueTitle')}</b><div>${tuDueBody(s)}</div></div>${s.claimed ? pill('ok', t('tu.claimed')) : `<button class="btn sm" data-act="claim" data-id="${esc(s.id)}">${t('tu.iPaid')}</button>`}</div>`;
     else msg = `<p class="small">${pill('plain', month ? t('tu.monthUnpaid') : t('tu.allUsed', { t: tu.n }))}</p>`;
   } else msg = month ? `<p class="small">${t('tu.monthPaid')}</p>` : `<p class="small">${tu.left === 1 ? t('tu.left1') : t('tu.left', { n: tu.left })}</p>`;
+  if (month && tu.plan) {
+    const m2 = tu.due ? msg : `<p class="small">${tu.left === 1 ? t('tu.monthLeft1') : t('tu.monthLeft', { n: tu.left })}</p>`;
+    return `<section class="card"><div class="card-h"><h3>${t('tu.titleMonth')}</h3><span class="small muted num">${t('tu.used', { n: tu.used, t: tu.plan })}</span></div>
+    ${keyboard(tu.used, tx('tu.kbMonth', { n: tu.used, t: tu.plan }), tu.plan)}${m2}</section>`;
+  }
   if (month) return `<section class="card"><div class="card-h"><h3>${t('tu.titleMonth')}</h3><span class="small muted num">${t('tu.usedMonth', { n: tu.used })}</span></div>
     <p class="small">${t('tu.monthLessons', { n: tu.used })}</p>${msg}</section>`;
   return `<section class="card"><div class="card-h"><h3>${t('tu.title')}</h3><span class="small muted num">${t('tu.used', { n: tu.used, t: tu.n })}</span></div>
     ${keyboard(tu.used, tx('tu.kb', { n: tu.used, t: tu.n }), tu.n)}${msg}</section>`;
 }
 /** 该交费提示里的正文：每 N 节一期 / 按月 两种说法。 */
-const tuDueBody = s => s.tuition.mode === 'month' ? t('tu.dueBodyMonth', { name: s.name, month: s.tuition.month }) : t('tu.dueBody', { name: s.name, t: s.tuition.n });
+const tuDueBody = s => s.tuition.plan ? t('tu.dueBodyPlan', { name: s.name, n: s.tuition.plan }) : s.tuition.mode === 'month' ? t('tu.dueBodyMonth', { name: s.name, month: s.tuition.month }) : t('tu.dueBody', { name: s.name, t: s.tuition.n });
 
 function pointsPeek(S, s) {
   const p = S.data.points[s.id];
@@ -450,7 +455,7 @@ export function overviewView(S) {
   const unreadBy = {};
   d.messages.filter(m => m.unread).forEach(m => { unreadBy[m.sid] = (unreadBy[m.sid] || 0) + 1; });
   const rows = [];
-  due.forEach(s => rows.push(`<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted">${s.tuition.mode === 'month' ? t('ov.dueRowMonth', { month: s.tuition.month }) : t('ov.dueRow', { t: s.tuition.n })}</div></div>
+  due.forEach(s => rows.push(`<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted">${s.tuition.plan ? t('ov.dueRowPlan', { n: s.tuition.plan }) : s.tuition.mode === 'month' ? t('ov.dueRowMonth', { month: s.tuition.month }) : t('ov.dueRow', { t: s.tuition.n })}</div></div>
     ${s.claimed ? pill('ok', t('ov.claimed')) : ''}<button class="btn sm" data-act="remind" data-id="${esc(s.id)}">${t('ov.remind')}</button><button class="btn sm primary" data-act="paid" data-id="${esc(s.id)}">${t('ov.paid')}</button></div>`));
   Object.keys(unreadBy).forEach(sid => {
     const s = byId(d.students, sid); if (!s) return;
@@ -491,7 +496,7 @@ export function studentsView(S) {
         <div class="small muted">${esc(s.level)}${s.email ? ` · ${esc(s.email)}` : ''}</div>
         <div class="small muted">${seenLine(s)}</div>
         <div class="small muted">${esc(tzName(s.tz, L))}${s.next ? ` · ${esc(tx('nx.row', { when: fmtWhenZ(s.next, d.teacherTz, L) }))}` : ''}</div></div>
-        <div class="small num">${s.tuition.mode === 'month' ? t('stu.tuitionRowMonth', { u: s.tuition.used }) : t('stu.tuitionRow', { u: s.tuition.used, t: s.tuition.n, l: Math.max(0, s.tuition.left) })}${s.tuition.due ? ' ' + pill('bad', t('stu.due')) : ''}</div>
+        <div class="small num">${s.tuition.plan ? t('stu.tuitionRowPlan', { u: s.tuition.used, p: s.tuition.plan }) : s.tuition.mode === 'month' ? t('stu.tuitionRowMonth', { u: s.tuition.used }) : t('stu.tuitionRow', { u: s.tuition.used, t: s.tuition.n, l: Math.max(0, s.tuition.left) })}${s.tuition.due ? ' ' + pill('bad', t('stu.due')) : ''}</div>
         ${s.active ? `<button class="btn sm" data-act="preview" data-id="${esc(s.id)}">${t('prev.btn')}</button>` : ''}
         <button class="btn sm" data-act="student-edit" data-id="${esc(s.id)}">${t('common.edit')}</button></div>`).join('') || `<p class="muted">${t('stu.none')}</p>`}</div></section>
     <div class="page-h"><h2>${t('par.title')}</h2><button class="btn sm" data-act="parent-new">${t('par.add')}</button></div>
@@ -537,7 +542,10 @@ export function studentModal(S) {
         <label class="f">${t('stu.billing')}${sel('billing', bill, [['lessons', tx('stu.billLessons')], ['month', tx('stu.billMonth')]]).replace('<select ', '<select data-change="bill-mode" ')}</label>
         ${bill === 'month'
           ? `<label class="f">${t('stu.billFrom')}<input type="month" name="billFrom" value="${val(v.billFrom || thisMonth)}"></label>
-        <label class="f">${t('stu.paidMonths')}<input type="number" name="paid" value="${val(v.paid)}" min="0" max="500"></label>`
+        <label class="f">${t('stu.paidMonths')}<input type="number" name="paid" value="${val(v.paid)}" min="0" max="500"></label>
+        <label class="f">${t('stu.mPlan')}<input type="number" name="mPlan" value="${val(v.mPlan || '')}" min="0" max="31" placeholder="${esc(tx('stu.mPlanPh'))}"></label>
+        <label class="f">${t('stu.mDone')}<input type="number" name="mDone" value="${val(v.mDone === '' || v.mDone == null ? '' : v.mDone)}" min="0" max="99" placeholder="${esc(tx('stu.mDonePh', { n: (v.tuition || {}).auto || 0 }))}"></label>
+        <p class="small muted full">${t('stu.mHelp', { n: (v.tuition || {}).auto || 0 })}</p>`
           : `<label class="f">${t('stu.term')}<input type="number" name="term" value="${val(v.term || 10)}" min="1" max="50"></label>
         <label class="f">${t('stu.paid')}<input type="number" name="paid" value="${val(v.paid)}" min="0" max="500"></label>
         <label class="f">${t('stu.carry')}<input type="number" name="carry" value="${val(v.carry)}" min="0" max="5000"></label>`}

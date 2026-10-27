@@ -201,4 +201,23 @@ describe('批次五：日历与学费方式', () => {
     assert.equal(await s.locator('.kb').count(), 0);
     assert.equal(await s.locator('.kbar').count() >= 1, true);
   });
+  test('按月：填“本月交了 3 节、已上 2 节” → 学生首页显示 2 / 3，3 个琴键填满 2 个', async () => {
+    const page = await newPage(); await login(page, OWNER);
+    await tab(page, 'students');
+    await page.click('[data-act=student-edit][data-id="s-emma"]');
+    await page.selectOption('form[data-form=student-save] [name=billing]', 'month');
+    await page.fill('form[data-form=student-save] [name=mPlan]', '3');
+    await page.fill('form[data-form=student-save] [name=mDone]', '2');
+    await page.click('form[data-form=student-save] button[type=submit]');
+    await page.waitForSelector('#toast.show');
+    const s = await newPage(); await login(s, al('emma'));
+    assert.match(await s.locator('main').innerText(), /2 \/ 3/);
+    assert.equal(await s.locator('.kb .wk').count(), 3);
+    assert.equal(await s.locator('.kb .wk.on').count(), 2);
+    await shot(s, 'b5-month-plan');
+    // 老师重新打开编辑页，值还在
+    await page.click('[data-act=student-edit][data-id="s-emma"]');
+    assert.equal(await page.inputValue('form[data-form=student-save] [name=mPlan]'), '3');
+    assert.equal(await page.inputValue('form[data-form=student-save] [name=mDone]'), '2');
+  });
 });

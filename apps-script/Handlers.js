@@ -107,6 +107,20 @@ function hStudentSave_(ctx, p) {
     var bf = String(r.billFrom == null ? '' : r.billFrom).trim();
     if (bf && !/^\d{4}-(0[1-9]|1[0-2])$/.test(bf)) fail_('bad_request', 'billFrom');
     fields.billFrom = fields.billing === 'month' ? (bf || ymKey_(now_(), teacherTz_())) : '';
+    if (fields.billing !== 'month') { fields.mPlan = 0; fields.mAdj = 0; fields.mMonth = ''; }
+  }
+  // 按月：这个月交了几节课的学费（0/空 = 不设），以及“这个月已上几节”的手动修正（只存和系统计数的差）
+  if (r.mPlan !== undefined && fields.billing !== 'lessons') {
+    var plan = int_(r.mPlan === '' || r.mPlan == null ? 0 : r.mPlan, 0, 31, 'mPlan');
+    fields.mPlan = plan;
+    fields.mMonth = plan > 0 ? ymKey_(now_(), teacherTz_()) : '';
+    fields.mAdj = 0;
+    if (plan > 0 && r.mDone !== undefined && r.mDone !== '' && r.mDone != null) {
+      var want = int_(r.mDone, 0, 99, 'mDone');
+      var curYm = ymKey_(now_(), teacherTz_()), sidAuto = r.id ? String(r.id) : '';
+      var auto = dbAll_('Lessons').filter(function (l) { return l.sid === sidAuto && l.status === 'done' && ymKey_(ms_(l.date), teacherTz_()) === curYm; }).length;
+      fields.mAdj = want - auto;
+    }
   }
   // 教材和学生资料一起保存（和“保存”按钮同一次提交，不会再丢）；没带 books 就不动原有的
   var books = r.books === undefined ? undefined : cleanBooks_(r.books);

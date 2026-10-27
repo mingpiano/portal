@@ -87,7 +87,9 @@ function mailTuition_(studentName, note, lang, tu) {
   var subject = zh ? studio + '：学费提醒' : studio + ': tuition reminder';
   var month = tu && tu.mode === 'month';
   var n = tu && tu.n ? tu.n : 10;
-  var body = month
+  var body = month && tu.plan
+    ? (zh ? studentName + ' 本月已交的 ' + tu.plan + ' 节课已经上完，请续交学费。' : studentName + ' has used all ' + tu.plan + ' paid lessons this month. Please pay again.')
+    : month
     ? (zh ? studentName + ' 的 ' + tu.month + ' 月份学费还没交，请交学费。' : studentName + ': tuition for ' + tu.month + ' has not been paid yet.')
     : (zh ? studentName + ' 本期 ' + n + ' 节课已经上完，请交下一期学费。' : studentName + ' has finished all ' + n + ' lessons in this term. Next term\'s tuition is due.');
   var noteHtml = note ? '<p style="white-space:pre-wrap;background:#F3EADA;border-radius:8px;padding:10px 12px">' + escHtml_(note) + '</p>' : '';

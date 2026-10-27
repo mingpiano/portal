@@ -6,9 +6,9 @@
  * 以下划线结尾的函数是内部函数，网页只能通过 doPost 里登记的 action 调用。
  */
 
-var SCHEMA_VERSION = 6;
+var SCHEMA_VERSION = 7;
 /** 后台程序版本：网页发现后台比自己旧（忘了发布新版本），会提醒老师。每批功能 +1。 */
-var API_VERSION = 5;
+var API_VERSION = 6;
 
 /* ---------- 登录相关限制 ---------- */
 var CODE_TTL_MS = 10 * 60 * 1000;          // 验证码 10 分钟有效
@@ -45,7 +45,7 @@ var SHEETS_ = {
   Admins:   ['email', 'name', 'avatar:j', 'active:b'],
   Students: ['id', 'name', 'email', 'kind', 'birth:d', 'start:d', 'adj:i', 'lang', 'level', 'grp', 'dur:i',
              'paid:i', 'carry:i', 'claimed:b', 'showPoints:b', 'avatar:j', 'books:j', 'active:b', 'created', 'tz',
-             'codeHash', 'codeVer:i', 'codeFails:i', 'codeLock:i', 'lastSeen', 'term:i', 'billing', 'billFrom'],
+             'codeHash', 'codeVer:i', 'codeFails:i', 'codeLock:i', 'lastSeen', 'term:i', 'billing', 'billFrom', 'mPlan:i', 'mAdj:i', 'mMonth'],
   Parents:  ['id', 'name', 'email', 'lang', 'avatar:j', 'active:b', 'created', 'lastSeen'],
   Pairs:    ['parentId', 'studentId'],
   Lessons:  ['id', 'sid', 'date', 'dur:i', 'status', 'confirmedAt', 'signedAt', 'signedBy', 'loggedAt', 'notes:j', 'hwDone:j'],

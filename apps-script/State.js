@@ -66,6 +66,7 @@ function buildState_(ctx) {
     });
     if (admin) {
       out.paid = s.paid; out.carry = s.carry; out.hasCode = !!s.codeHash; out.billFrom = s.billFrom || '';
+      out.mPlan = out.tuition.plan || 0; out.mDone = out.tuition.plan ? out.tuition.used : '';
       out.parentIds = kidParents.map(function (p) { return p.parentId; });
     }
     studentsOut.push(out);
