@@ -492,6 +492,7 @@ const ROWS = [
   /* 预览 */
   ['prev.btn', '预览学生页', 'Preview as student'],
   ['prev.banner', '预览模式：这是 <b>{name}</b> 登录后看到的页面。所有操作都已关闭，不会改动任何数据。', 'Preview: this is what <b>{name}</b> sees after signing in. All actions are switched off and nothing will be changed.'],
+  ['ver.old', '⚠ 后台程序不是最新版：新功能（保存教材、预览家长页、资源库等）暂时不能用。请在 Apps Script 里“部署 → 管理部署 → 铅笔 → 新版本 → 部署”。', '⚠ The backend is out of date, so new features (saving books, parent preview, resources) won’t work yet. In Apps Script: Deploy → Manage deployments → pencil → New version → Deploy.'],
   ['prev.btnParent', '预览家长页', 'Preview as parent'],
   ['prev.exit', '退出预览', 'Exit preview'],
   ['prev.readonly', '预览模式下不能操作。', 'This is a preview; actions are switched off.'],

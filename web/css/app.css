@@ -428,3 +428,6 @@ h1.bn-1{font-size:1.6rem}
 .up-prog{display:flex;flex-direction:column;gap:6px}
 .up-prog progress{width:100%;height:10px;accent-color:var(--accent)}
 .modal video,.modal audio{width:100%;max-height:60vh;border-radius:10px}
+
+.ver-note{background:#fdecea;border-bottom:2px solid #c0392b;color:#7a1f14;font-size:.9rem}
+.ver-note .wrap{padding-block:10px}

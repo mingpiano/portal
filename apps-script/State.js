@@ -113,7 +113,7 @@ function buildState_(ctx) {
     });
 
   var out = {
-    env: isTestEnv_() ? 'test' : 'prod',
+    env: isTestEnv_() ? 'test' : 'prod', apiVer: API_VERSION,
     studio: { zh: cfg.studio_name_zh, en: cfg.studio_name_en },
     now: iso_(now), rules: rules, me: me,
     students: studentsOut, parents: parentsOut, lessons: lessonsOut, points: points,

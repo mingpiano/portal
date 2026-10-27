@@ -114,7 +114,9 @@ export function shell(S, body) {
     ? `<div class="who">${nameLine}${avatar(me, 32)}<button class="btn sm primary" data-act="preview-exit">${t('prev.exit')}</button></div>`
     : `<div class="who">${nameLine}<button class="avbtn" data-act="av-open" aria-label="${esc(tx('av.change'))}">${avatar(me, 32)}</button>${langBtn()}<button class="btn sm" data-act="logout">${t('app.logout')}</button></div>`;
   const pv = S.preview ? `<div class="prev-note" role="note"><div class="wrap">${t('prev.banner', { name: me.name })} <button class="btn sm" data-act="preview-exit">${t('prev.exit')}</button></div></div>` : '';
-  return `${pv}<header class="bar"><div class="wrap">
+  const WANT_API = 3; // 要和 apps-script/Config.js 的 API_VERSION 一致
+  const old = me.role === 'admin' && !S.preview && (S.data.apiVer || 0) < WANT_API ? `<div class="ver-note" role="alert"><div class="wrap">${t('ver.old')}</div></div>` : '';
+  return `${old}${pv}<header class="bar"><div class="wrap">
       <div class="brand">${logoImg(34)}${brandText('b')}</div>
       ${who}
     </div>
