@@ -2,6 +2,7 @@ import * as api from './api.js';
 import { CONFIGURED } from './config.js';
 import { t, tx, getLang, setLang } from './i18n.js';
 import * as V from './views.js';
+import { applyTheme } from './theme.js';
 import { fieldsToMs, wallFields, nowFields } from './util.js';
 
 /* ---------- 本机存储（只放“个人偏好”和登录令牌；读写都包 try，隐私模式下也能用） ---------- */
@@ -31,10 +32,11 @@ function formKey(el) {
   const f = el.closest('form');
   return f && el.name ? `${f.dataset.form || ''}/${f.dataset.id || ''}/${el.name}` : null;
 }
-function snapshot() {
+function snapshot(skipBooks) {
   const snap = { vals: {}, focus: null };
   document.querySelectorAll('#app input, #app textarea, #app select, #modal-root input, #modal-root textarea, #modal-root select').forEach(el => {
     const k = formKey(el); if (!k || el.type === 'hidden') return;
+    if (skipBooks && /\/bk\d+[nfks]$|^#bk\d+-[nf]$/.test(k)) return; // 教材行增删后，序号变了，用刚整理好的数据，不要用旧快照
     snap.vals[k] = el.type === 'checkbox' ? { c: el.checked } : { v: el.value };
   });
   const a = document.activeElement;
@@ -64,8 +66,8 @@ function offlineView() {
   return `<div class="login wrap"><div class="card"><h1>${t('app.name')}</h1><p class="small muted">${t('app.sub')}</p><p>${t('boot.offline')}</p><div class="btns"><button class="btn primary" data-act="retry">${t('common.retry')}</button></div></div></div>`;
 }
 
-export function render({ keep = true } = {}) {
-  const snap = keep ? snapshot() : null, sy = window.scrollY;
+export function render({ keep = true, skipBooks = false } = {}) {
+  const snap = keep ? snapshot(skipBooks) : null, sy = window.scrollY;
   markFresh();
   let html;
   if (!CONFIGURED) html = V.unconfiguredView();
@@ -83,6 +85,7 @@ export function render({ keep = true } = {}) {
   restore(snap);
   window.scrollTo(0, sy);
   const th = $('#thread'); if (th) th.scrollTop = th.scrollHeight;
+  applyTheme($('#bg'), S.screen === 'app' && S.data.me.role === 'student' ? S.data.students[0] : null);
   drawCrop(); updateHints();
   autoRead();
 }
@@ -253,6 +256,19 @@ function readTempo(fd, name) {
   return Number.isInteger(b) && b >= 20 && b <= 400 ? { n: fd.get(name + 'n') || 'q', b } : false;
 }
 
+/** 读教材表单：每行 {k, n, f, s}；名字两头的空格去掉，整行都空着的行忽略。 */
+function readBookRows(root) {
+  const out = [];
+  for (let i = 0; root.querySelector(`[name="bk${i}n"]`); i++) {
+    const g = k => { const el = root.querySelector(`[name="bk${i}${k}"]`); return el ? String(el.value).trim() : ''; };
+    const k = g('k') === 'single' ? 'single' : 'book', row = { n: g('n'), s: g('s') === 'done' ? 'done' : 'current' };
+    if (k === 'single') { row.k = 'single'; if (g('f')) row.f = g('f'); }
+    out.push(row);
+  }
+  return out;
+}
+const bookDraft = () => { const f = $('#modal-root form[data-form="student-save"]'); return f ? readBookRows(f).map((r, i) => ({ ...r, k: ((f.querySelector(`[name="bk${i}k"]`) || {}).value === 'single') ? 'single' : 'book' })) : []; };
+
 const FORMS = {
   async 'login-email'(f, fd) {
     const email = norm(fd.get('email')); const A = S.login;
@@ -306,6 +322,8 @@ const FORMS = {
     const student = { name: fd.get('name'), email: fd.get('email'), kind: fd.get('kind'), lang: fd.get('lang'), birth: fd.get('birth') || '', start: fd.get('start') || '',
       tz: fd.get('tz') || undefined, level: fd.get('level'), grp: fd.get('grp'), dur: num(fd.get('dur')), paid: num(fd.get('paid')), carry: num(fd.get('carry')), adj: num(fd.get('adj')), showPoints: !!fd.get('showPoints') };
     if (f.dataset.id) student.id = f.dataset.id;
+    student.books = readBookRows(f);
+    if (student.books.some(b => !b.n)) return toast(tx('err.book_name'));
     const r = await run('students.save', { student }, { fresh: true });
     if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); }
   },
@@ -355,17 +373,14 @@ const ACT = {
   'toggle-archived'() { S.showArchived = !S.showArchived; render(); },
   close() { S.modal = null; S.avDraft = null; S.crop = null; render({ keep: false }); },
   'close-bg'(d, el, e) { if (e.target === el) ACT.close(); },
-  'student-new'() { S.modal = { type: 'student', id: null }; render({ keep: false }); focusFirst('#modal-root'); },
-  'student-edit'(d) { S.modal = { type: 'student', id: d.id }; render({ keep: false }); focusFirst('#modal-root'); },
+  'book-add'() { const rows = bookDraft(); rows.push({ k: 'book', n: '', s: 'current' }); S.modal.books = rows; render({ skipBooks: true }); const ins = document.querySelectorAll('#modal-root .bk-row input[type=text]'); const last = [...ins].reverse().find(x => /^bk\d+n$/.test(x.name)); if (last) last.focus({ preventScroll: true }); },
+  'book-del'(d) { const rows = bookDraft(); rows.splice(Number(d.i), 1); S.modal.books = rows; render({ skipBooks: true }); },
+  'student-new'() { S.modal = { type: 'student', id: null, books: [] }; render({ keep: false }); focusFirst('#modal-root'); },
+  'student-edit'(d) { S.modal = { type: 'student', id: d.id, books: (stuById(d.id).books || []).map(b => ({ k: b.k === 'single' ? 'single' : 'book', n: b.n, f: b.f || '', s: b.s })) }; render({ keep: false }); focusFirst('#modal-root'); },
   'parent-new'() { S.modal = { type: 'parent', id: null }; render({ keep: false }); focusFirst('#modal-root'); },
   'parent-edit'(d) { S.modal = { type: 'parent', id: d.id }; render({ keep: false }); focusFirst('#modal-root'); },
   async archive(d) { const r = await run('students.archive', { id: d.id, active: d.to === 'true' }, { fresh: true }); if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); } },
   async 'parent-archive'(d) { const r = await run('parents.archive', { id: d.id, active: d.to === 'true' }, { fresh: true }); if (r.ok) { S.modal = null; render({ keep: false }); toast(tx('common.saved')); } },
-  async 'books-save'(d) {
-    const books = parseBooks($('#books-text').value);
-    if (books.some(b => !b.n)) return toast(tx('err.bad_request'));
-    const r = await run('books.save', { sid: d.id, books }); if (r.ok) toast(tx('common.saved'));
-  },
   remind(d) { S.modal = { type: 'remind', id: d.id }; render({ keep: false }); focusFirst('#modal-root'); },
   paid(d) {
     const s = stuById(d.id);
@@ -389,11 +404,11 @@ const ACT = {
   async preview(d) {
     if (S.busy || S.preview) return;
     S.busy = true; render();
-    const r = await api.call('preview.state', { sid: d.id }, S.token);
+    const r = await api.call('preview.state', d.kind === 'parent' ? { pid: d.id } : { sid: d.id }, S.token);
     S.busy = false;
     if (!r.ok) { if (r.error === 'unauthorized') return sessionEnded('login.expired'); toast(errText(r.error)); return render(); }
     S.adminData = S.data; S.adminLang = getLang();
-    S.preview = { id: d.id }; S.data = r.data.preview; S.modal = null; S.kid = null; S.msgSel = null;
+    S.preview = { id: d.id, kind: d.kind || 'student' }; S.data = r.data.preview; S.modal = null; S.kid = null; S.msgSel = null;
     const l = S.data.me.lang; if (l === 'zh' || l === 'en') setLang(l);
     S.tab = V.defaultTab(S); render({ keep: false }); window.scrollTo(0, 0);
   },
@@ -445,6 +460,7 @@ const CHANGE = {
     const r = await run('homework.check', { id: el.dataset.id, idx: Number(el.dataset.idx), on }, { silent: true });
     if (!r.ok) render({ keep: false });
   },
+  'book-kind'() { S.modal.books = bookDraft(); render({ skipBooks: true }); },
   'rec-count'(el) { S.recN = Math.min(V.REC_MAX_PIECES, Math.max(1, Number(el.value) || 1)); render(); },
   'rec-hw'(el) { S.recHw = { ...S.recHw, [el.dataset.i]: el.value }; render(); },
   'rec-student'(el) {

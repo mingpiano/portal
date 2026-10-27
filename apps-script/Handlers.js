@@ -91,6 +91,8 @@ function hStudentSave_(ctx, p) {
     showPoints: r.showPoints == null ? kind === 'child' : bool_(r.showPoints)
   };
   if (r.tz !== undefined && r.tz !== '') fields.tz = oneOf_(r.tz, TZ_LIST, 'tz');
+  // 教材和学生资料一起保存（和“保存”按钮同一次提交，不会再丢）；没带 books 就不动原有的
+  var books = r.books === undefined ? undefined : cleanBooks_(r.books);
   var all = dbAll_('Students');
   if (email && all.some(function (s) { return s.id !== r.id && s.email && normEmail_(s.email) === email; })) fail_('email_taken');
   if (kind === 'adult' && r.id && dbAll_('Pairs').some(function (x) { return x.studentId === r.id; })) fail_('adult_has_parent');
@@ -98,12 +100,13 @@ function hStudentSave_(ctx, p) {
   if (r.id) {
     var row = findStudent_(String(r.id));
     if (!row) fail_('not_found');
+    if (books !== undefined) fields.books = books;
     dbUpdate_('Students', row, fields);
     return { id: row.id };
   }
   var rec = fields;
   rec.tz = fields.tz || teacherTz_();
-  rec.id = newId_('s'); rec.claimed = false; rec.avatar = null; rec.books = []; rec.active = true; rec.created = iso_(now_());
+  rec.id = newId_('s'); rec.claimed = false; rec.avatar = null; rec.books = books || []; rec.active = true; rec.created = iso_(now_());
   dbInsert_('Students', rec);
   return { id: rec.id };
 }
@@ -158,12 +161,25 @@ function hPairSet_(ctx, p) {
 function hBooksSave_(ctx, p) {
   var s = findStudent_(String(p.sid || ''));
   if (!s) fail_('not_found');
-  if (!Array.isArray(p.books) || p.books.length > 40) fail_('bad_request', 'books');
-  var books = p.books.map(function (b) {
-    return { n: str_(b.n, LIMITS.book, { required: true, label: 'book' }), s: oneOf_(b.s, ['current', 'done'], 'book status') };
-  });
-  dbUpdate_('Students', s, { books: books });
+  dbUpdate_('Students', s, { books: cleanBooks_(p.books) });
   return {};
+}
+
+/**
+ * 教材列表：每项是一本教材，或者一首“单曲”（k:'single'，可注明选自哪本曲集 f）。
+ * s 是学习状态：current 在学 / done 学过。
+ */
+function cleanBooks_(list) {
+  if (!Array.isArray(list) || list.length > 40) fail_('bad_request', 'books');
+  return list.map(function (b) {
+    if (!b || typeof b !== 'object') fail_('bad_request', 'book');
+    var out = { n: str_(b.n, LIMITS.book, { required: true, label: 'book' }), s: oneOf_(b.s, ['current', 'done'], 'book status') };
+    if (b.k !== undefined && b.k !== '' && b.k !== 'book') {
+      out.k = oneOf_(b.k, ['single'], 'book kind');
+      var f = str_(b.f, LIMITS.book); if (f) out.f = f;
+    }
+    return out;
+  });
 }
 
 /* ---------- 老师：记课、签字 ---------- */
@@ -275,6 +291,11 @@ function hHomeworkCheck_(ctx, p) {
  * 所以预览里看到的和学生真实看到的一模一样。只读：网页在预览模式下不会发出任何修改请求。
  */
 function hPreviewState_(ctx, p) {
+  if (p.pid) { // 家长视角
+    var pr = dbAll_('Parents').filter(function (x) { return x.id === String(p.pid); })[0];
+    if (!pr || !pr.active) fail_('not_found');
+    return { preview: buildState_({ role: 'parent', id: pr.id, email: '' }) };
+  }
   var s = findStudent_(String(p.sid || ''));
   if (!s || !s.active) fail_('not_found');
   return { preview: buildState_({ role: 'student', id: s.id, email: '' }) };

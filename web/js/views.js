@@ -4,6 +4,7 @@
  * 或者作为 t() 的变量（t 会自动转义变量）。
  */
 import { t, tx, getLang } from './i18n.js';
+import { festGreeting } from './theme.js';
 import { esc, avatar, keyboard, fmtD, fmtDT, fmtYMD, spanSince, ageOf, signed, AVATAR_EMOJI, AVATAR_COLORS, TZ_LIST, tzName, tzAbbr, fmtClock, fmtDateZ, fmtWhenZ, daysUntil, nowFields, wallFields, fieldsToMs, TEMPO_NOTES, tempoText, noteSym } from './util.js';
 
 const lg = () => getLang();
@@ -237,10 +238,13 @@ export function homeworkView(S) {
     ${shut.length ? `<div class="page-h"><h2>${t('hw.earlier')}</h2></div>${shut.map(card).join('')}` : ''}</div>`;
 }
 
+/** 节庆期间首页顶上的问候（不在节庆期为空）。 */
+const festBanner = () => { const g = festGreeting(); return g ? `<div class="fest" role="note"><span class="fest-ic" aria-hidden="true">${g.ic}</span><b>${esc(g.n[lg() === 'zh' ? 0 : 1])}</b></div>` : ''; };
+
 /* ---------- 学生 / 家长：首页 ---------- */
 export function homeView(S) {
   const d = S.data, me = d.me, L = lg();
-  const greet = `<div class="page-h"><h1>${t('home.hi', { name: me.name })}</h1><span class="muted">${esc(fmtD(new Date(), L))}</span></div>`;
+  const greet = `<div class="page-h"><h1>${t('home.hi', { name: me.name })}</h1><span class="muted">${esc(fmtD(new Date(), L))}</span></div>${festBanner()}`;
   if (me.role === 'parent') {
     if (!d.students.length) return `<div class="stack">${greet}<section class="card"><p class="muted">${t('par.noKids')}</p></section></div>`;
     return `<div class="stack">${greet}${unreadStrip(S)}${d.students.map(k => {
@@ -274,6 +278,8 @@ function tuitionPayBanner(k) {
 }
 
 /* ---------- 学生 / 家长：正在学习、课程记录、通知、留言、积分 ---------- */
+/** 教材标签：整本教材 📘，单曲 🎵（选自某本曲集时带上出处）；学过的前面打勾。 */
+const bookChip = (b, done) => `<span class="pbook">${done ? '✓' : b.k === 'single' ? '🎵' : '📘'} ${esc(b.n)}${b.k === 'single' && b.f ? ` <span class="muted small">· ${esc(tx('bk.from2', { f: b.f }))}</span>` : ''}</span>`;
 export function learningView(S) {
   const s = curKid(S), L = lg();
   if (!s) return '';
@@ -281,8 +287,8 @@ export function learningView(S) {
   const piece = e => `<div class="prow"><div class="grow"><span class="work">${esc(e.title)}</span> <span class="muted small">${esc(e.source)}</span></div>
     ${e.st === 'done' ? `${pill('ok', t('piece.done'))}<span class="small muted">${t('lrn.finishedOn', { d: fmtD(e.last, L) })}</span>` : `${pill(e.st === 'new' ? 'wait' : 'plain', t('piece.' + e.st))}<span class="small muted">${t('lrn.since', { d: fmtD(e.first, L), n: e.n })}</span>`}</div>`;
   return `<div class="stack"><div class="page-h"><h1>${t('tab.learning')}</h1><span class="muted">${esc(s.name)}</span></div>
-    <div class="grid2"><section class="card"><h2>${t('lrn.books')}</h2><div class="chips" style="gap:8px">${bk.filter(b => b.s === 'current').map(b => `<span class="pbook">📘 ${esc(b.n)}</span>`).join('') || `<span class="muted small">${t('lrn.noBooks')}</span>`}</div>
-      <h3>${t('lrn.oldBooks')}</h3><div class="chips" style="gap:8px">${bk.filter(b => b.s === 'done').map(b => `<span class="pbook">✓ ${esc(b.n)}</span>`).join('') || '<span class="muted small">—</span>'}</div></section>
+    <div class="grid2"><section class="card"><h2>${t('lrn.books')}</h2><div class="chips" style="gap:8px">${bk.filter(b => b.s === 'current').map(bookChip).join('') || `<span class="muted small">${t('lrn.noBooks')}</span>`}</div>
+      <h3>${t('lrn.oldBooks')}</h3><div class="chips" style="gap:8px">${bk.filter(b => b.s === 'done').map(b => bookChip(b, true)).join('') || '<span class="muted small">—</span>'}</div></section>
       <section class="card"><h3>${t('jr.title')}</h3>${journey(s)}</section></div>
     <section class="card"><div class="card-h"><h2>${t('lrn.current')}</h2><span class="small muted">${lr.current.length}</span></div><div class="plist">${lr.current.map(piece).join('') || '<p class="muted small">—</p>'}</div></section>
     <section class="card"><div class="card-h"><h2>${t('lrn.past')}</h2></div><div class="plist">${lr.finished.map(piece).join('') || `<p class="muted small">${t('lrn.nonePast')}</p>`}</div></section>
@@ -356,7 +362,7 @@ export function overviewView(S) {
     const same = !s.tz || s.tz === d.teacherTz;
     return `<div class="row">${avatar(s, 34)}<div class="grow"><b>${esc(s.name)}</b><div class="small muted num">${esc(fmtWhenZ(s.next, d.teacherTz, L, { weekday: true }))} ${esc(tzAbbr(s.next, d.teacherTz))}${same ? '' : ` · ${esc(tx('ov.theirTime', { when: fmtClock(s.next, s.tz, L), zone: tzAbbr(s.next, s.tz) }))}`}</div></div></div>`;
   }).join('');
-  return `<div class="stack"><div class="page-h"><h1>${t('tab.overview')}</h1><span class="muted">${esc(fmtD(new Date(), L))}</span></div>
+  return `<div class="stack"><div class="page-h"><h1>${t('tab.overview')}</h1><span class="muted">${esc(fmtD(new Date(), L))}</span></div>${festBanner()}
     <div class="stats"><div class="stat"><b>${active.length}</b><span>${t('ov.students')}</span></div><div class="stat"><b>${month}</b><span>${t('ov.month')}</span></div>
       <div class="stat"><b>${pending.length}</b><span>${t('ov.pending')}</span></div><div class="stat ${due.length ? 'flag' : ''}"><b>${due.length}</b><span>${t('ov.due')}</span></div></div>
     <section class="card"><div class="card-h"><h2>${t('ov.todo')}</h2><button class="btn primary sm" data-act="tab" data-tab="record">${t('ov.logLesson')}</button></div>
@@ -380,7 +386,7 @@ export function studentsView(S) {
         <button class="btn sm" data-act="student-edit" data-id="${esc(s.id)}">${t('common.edit')}</button></div>`).join('') || `<p class="muted">${t('stu.none')}</p>`}</div></section>
     <div class="page-h"><h2>${t('par.title')}</h2><button class="btn sm" data-act="parent-new">${t('par.add')}</button></div>
     <section class="card"><div class="rows">${parents.map(p => `<div class="row">${avatar(p, 34)}<div class="grow"><b>${esc(p.name)}</b>${p.active ? '' : ' ' + pill('bad', t('stu.archived'))}<div class="small muted">${esc(p.email)}</div></div>
-        <div class="chips">${p.kids.map(k => `<span class="pill plain">${esc(kidName(k))}</span>`).join('')}</div><button class="btn sm" data-act="parent-edit" data-id="${esc(p.id)}">${t('common.edit')}</button></div>`).join('') || `<p class="muted">${t('par.none')}</p>`}</div></section></div>`;
+        <div class="chips">${p.kids.map(k => `<span class="pill plain">${esc(kidName(k))}</span>`).join('')}</div>${p.active ? `<button class="btn sm" data-act="preview" data-kind="parent" data-id="${esc(p.id)}">${t('prev.btnParent')}</button>` : ''}<button class="btn sm" data-act="parent-edit" data-id="${esc(p.id)}">${t('common.edit')}</button></div>`).join('') || `<p class="muted">${t('par.none')}</p>`}</div></section></div>`;
 }
 
 const val = v => esc(v == null ? '' : v);
@@ -392,8 +398,14 @@ export function studentModal(S) {
   const pairs = s && s.kind === 'child' ? `<div class="f full"><b>${t('stu.parents')}</b>
       <div class="picklist">${parents.map(p => `<label><input type="checkbox" data-change="pair" data-pid="${esc(p.id)}" data-sid="${esc(s.id)}" ${p.kids.includes(s.id) ? 'checked' : ''}>${esc(p.name)} <span class="muted small">${esc(p.email)}</span></label>`).join('') || `<span class="muted small">${t('par.none')}</span>`}</div>
       <p class="small muted">${t('stu.parentsHelp')}</p></div>` : '';
-  const books = s ? `<div class="f full"><b>${t('stu.books')}</b><textarea id="books-text" style="min-height:80px" placeholder="Thompson 3 | current">${esc((s.books || []).map(b => `${b.n} | ${b.s}`).join('\n'))}</textarea>
-      <div class="btns"><button class="btn sm" type="button" data-act="books-save" data-id="${esc(s.id)}">${t('stu.booksSave')}</button><span class="small muted">${t('stu.booksHelp')}</span></div></div>` : '';
+  const rows = S.modal.books || (s ? s.books : []) || [];
+  const books = `<div class="f full books-ed"><b>${t('stu.books')}</b><p class="small muted">${t('stu.booksHelp')}</p>
+      ${rows.map((b, i) => `<div class="bk-row"><select name="bk${i}k" data-change="book-kind" aria-label="${esc(tx('bk.kind'))}"><option value="book" ${b.k === 'single' ? '' : 'selected'}>📘 ${t('bk.book')}</option><option value="single" ${b.k === 'single' ? 'selected' : ''}>🎵 ${t('bk.single')}</option></select>
+        <input type="text" id="bk${i}-n" name="bk${i}n" value="${val(b.n)}" maxlength="80" placeholder="${esc(tx(b.k === 'single' ? 'bk.phSingle' : 'bk.phBook'))}" aria-label="${esc(tx('bk.name'))}">
+        ${b.k === 'single' ? `<input type="text" id="bk${i}-f" name="bk${i}f" value="${val(b.f)}" maxlength="80" placeholder="${esc(tx('bk.phFrom'))}" aria-label="${esc(tx('bk.from'))}">` : ''}
+        <select name="bk${i}s" aria-label="${esc(tx('bk.status'))}"><option value="current" ${b.s === 'done' ? '' : 'selected'}>${t('bk.current')}</option><option value="done" ${b.s === 'done' ? 'selected' : ''}>${t('bk.done')}</option></select>
+        <button class="btn sm" type="button" data-act="book-del" data-i="${i}" aria-label="${esc(tx('common.delete'))}">✕</button></div>`).join('')}
+      <div class="btns"><button class="btn sm" type="button" data-act="book-add">＋ ${t('bk.add')}</button></div></div>`;
   return `<div class="card-h"><h2>${t(s ? 'stu.edit' : 'stu.add')}</h2><button class="btn sm" data-act="close">${t('common.close')}</button></div>
     <form class="stack" data-form="student-save" ${s ? `data-id="${esc(s.id)}"` : ''}>
       <div class="form">
@@ -412,10 +424,11 @@ export function studentModal(S) {
         <label class="check full"><input type="checkbox" name="showPoints" ${v.showPoints ? 'checked' : ''}>${t('stu.showPoints')}</label>
         <input type="hidden" name="grp" value="${val(v.grp)}">
       </div>
+      ${books}
       <p class="small muted">${t('stu.tuitionHelp')}</p>
       <div class="btns"><button class="btn primary" type="submit">${t('common.save')}</button>
         ${s ? `<button class="btn" type="button" data-act="archive" data-id="${esc(s.id)}" data-to="${s.active ? 'false' : 'true'}">${t(s.active ? 'stu.archive' : 'stu.restore')}</button>` : ''}</div>
-    </form>${pairs}${books}`;
+    </form>${pairs}`;
 }
 
 export function parentModal(S) {

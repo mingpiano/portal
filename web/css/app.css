@@ -408,3 +408,9 @@ h1.bn-1{font-size:1.6rem}
 .f.check input{width:20px;height:20px;accent-color:var(--accent)}
 .tip{background:var(--accent-soft);border-radius:8px;padding:8px 10px}
 .piece{flex-wrap:wrap}
+
+/* ---- 教材编辑 ---- */
+.books-ed{gap:8px}
+.bk-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.bk-row input[type=text]{flex:1 1 140px;min-width:0}
+.bk-row select{width:auto;flex:none}
